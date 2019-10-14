@@ -4,7 +4,7 @@ module cpu(clk, rst_n, hlt, pc);
 	// Active low reset. A low on this signal resets the processor and causes
 	// execution to start at address 0x0000
 	// **** rst_n = active low reset
-	// **** rst = active high reset
+	// **** rst, rst_reg = active high reset
 	input rst_n;
 	// Assert when HLT encountered, after finishing prior instruction
 	output hlt;
@@ -49,8 +49,9 @@ module cpu(clk, rst_n, hlt, pc);
 	// imem_data_out[7:4] is Rs
 	// imem_data_out[3:0] is Rt in [OPCODE][Rd][Rs][Rt/imm]
 	// imem_data_out[11:8]
-	RegisterFile IREGFILE(.clk(clk), .rst(rst_reg), .SrcReg1(imem_data_out[7:4]), .SrcReg2(imem_data_out[3:0]), .DstReg(imem_data_out[11:8]), 
-			.WriteReg(RegWrite), .DstData(), .SrcData1(ALU_In1), .SrcData2(RegFile_SrcData2));
+	RegisterFile IREGFILE(.clk(clk), .rst(rst_reg), .SrcReg1(imem_data_out[7:4]),
+	.SrcReg2(imem_data_out[3:0]), .DstReg(imem_data_out[11:8]), .WriteReg(RegWrite),
+	.DstData(), .SrcData1(ALU_In1), .SrcData2(RegFile_SrcData2));
 
 	/////////////// REG FILE END ////////////////////////
 
