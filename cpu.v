@@ -48,35 +48,35 @@ module cpu(clk, rst_n, hlt, pc);
 	assign ALUSRC = opcode[3]| (opcode[2] & (~(opcode[1]&opcode[0])));
 
 	// RegWrite determines if writedata[15:0] will be writen into Dstreg
-	assign RegWrite = (~opcode[3]) | ~(&opcode) ;
+	assign RegWrite = (~opcode[3]) | opcode[3]&((~opcode[2]&~opcode[1]&~opcode[0])| (~opcode[2]&opcode[1]&~opcode[0])
+							|(~opcode[2]&opcode[1]&opcode[0])|(opcode[2]&opcode[1]&~opcode[0]));
 
-	// Reg1Src determines which bits from the opcode is going to used as the address in register src 1
-	//assign Reg1Src = 1;
+	
 
 	// Reg2Src determines which bits from the opcode is going to used as the address in register src 2
 	// Reg2Src only need to be asserted to 1 for SW, LLB, LHB
-	assign Reg2Src = 1;
+	assign Reg2Src = opcode[3];
 
 	// MemtoReg determines if write data in the registerfile will receive from the ALU or Data Memory
-	assign MemtoReg = 1;
+	assign MemtoReg = opcode[3]&~opcode[2]&~opcode[1]&~opcode[0];
 
 	// MemWrite determines if [15:0] data from Register output 2 gets writen into address from ALU output
-	assign MemWrite = 1;
+	assign MemWrite = opcode[3]&~opcode[2]&~opcode[1]&opcode[0];
 
 	// BranchType 0 if its Branch immediate ins, 1 if Branch Register
-	assign BranchType = 1;
+	assign BranchType = opcode[0];
 
 	// BranchIns, 1 if opcode is a branch instruction, 0 if not
-	assign BranchIns = 0;
 
+	assign BranchIns = opcode[3]&opcode[2]&~opcode[1];
 	// Halt
 	assign Halt = &opcode;
 
 	// LBIns, 1 if opcode is LoadBype instruction, 0 otherwise
-	assign LBIns = 0;
+	assign LBIns = opcode[3];
 
 	// PCtoReg, 1 if want to write PC to dstReg
-	assign PCtoReg = 0;
+	assign PCtoReg = opcode[3]&opcode[2]&opcode[1]&~opcode[0];
 
 	///////////// Control Signals END//////////////
 
