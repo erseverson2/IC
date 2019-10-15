@@ -27,16 +27,14 @@ module cpu(clk, rst_n, hlt, pc);
 	// PCS		1110
 	// HLT		1111
 	/////////////// Opcodes //////////////////////
+	wire [15:0] PC_out, PC_in;
 
 	/////////////// I-MEM ////////////////////////
 	wire[15:0] imem_data_out;
-	wire[15:0] imem_data_in;
 	wire[15:0] imem_addr;
-	wire imem_enable;
-	wire imem_wr;
 
-	memorylc IMEM(.data_out(imem_data_out), .data_in(imem_data_in), .addr(imem_addr),
-			.enable(imem_enable), .wr(imem_wr), .clk(clk), .rst(~rst_n));
+	memory1c IMEM(.data_out(imem_data_out), .data_in(), .addr(PC_out),
+			.enable(1'b1), .wr(1'b0), .clk(clk), .rst(~rst_n));
 	/////////////// I-MEM END////////////////////////
 
 	/////////////// Control Signals //////////////
@@ -90,7 +88,6 @@ module cpu(clk, rst_n, hlt, pc);
 	wire [15:0] ALU_In1, ALU_In2, RegFile_SrcData2, ALU_Out, ALU_mux_out, loaded_byte;
 
 	////////////// PC and PC control /////////////////////
-	wire [15:0] PC_out, PC_in;
 	PC iPC(.clk(clk), .rst(rst_reg), .write_en(1'b1), .PC_in(PC_in), .PC_out(PC_out));
 	//PC control needs to be changed to take care of branch register ins
 	PC_control iPC_control(
@@ -115,7 +112,7 @@ module cpu(clk, rst_n, hlt, pc);
 	wire dmem_enable;
 	wire dmem_wr;
 
-	memorylc DMEM(.data_out(dmem_data_out), .data_in(dmem_data_in), .addr(dmem_addr),
+	memory1c DMEM(.data_out(dmem_data_out), .data_in(dmem_data_in), .addr(dmem_addr),
 			.enable(dmem_enable), .wr(dmem_wr), .clk(clk), .rst(~rst_n));
 
 	
