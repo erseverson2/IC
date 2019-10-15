@@ -9,6 +9,10 @@ module cpu(clk, rst_n, hlt, pc);
 	output hlt;
 	output[15:0] pc; // program counter
 
+	// Register and ALU , and PC wires
+	wire [15:0] reg_data1, reg_data2, reg_wrt_data, SrcReg1_in, SrcReg2_in;
+	wire [15:0] ALU_In1, ALU_In2, RegFile_SrcData2, ALU_Out, ALU_mux_out, loaded_byte;
+	wire [15:0] PC_out, PC_in;
 	/////////////// Opcodes //////////////////////
 	// ADD		0000
 	// SUB		0001
@@ -27,11 +31,9 @@ module cpu(clk, rst_n, hlt, pc);
 	// PCS		1110
 	// HLT		1111
 	/////////////// Opcodes //////////////////////
-	wire [15:0] PC_out, PC_in;
 
 	/////////////// I-MEM ////////////////////////
 	wire[15:0] imem_data_out;
-	wire[15:0] imem_addr;
 
 	memory1c IMEM(.data_out(imem_data_out), .data_in(), .addr(PC_out),
 			.enable(1'b1), .wr(1'b0), .clk(clk), .rst(~rst_n));
@@ -43,10 +45,10 @@ module cpu(clk, rst_n, hlt, pc);
 	assign opcode = imem_data_out[15 : 12];
 	
 	// ALUSRC controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
-	assign ALUSRC = ((~opcode[3]) & opcode[2]) & (~(opcode[1] & opcode[0]));
+	assign ALUSRC = opcode[3]| (opcode[2] & (~(opcode[1]&opcode[0])));
 
 	// RegWrite determines if writedata[15:0] will be writen into Dstreg
-	assign RegWrite = 1;
+	assign RegWrite = (~opcode[3]) | ~(&opcode) ;
 
 	// Reg1Src determines which bits from the opcode is going to used as the address in register src 1
 	//assign Reg1Src = 1;
@@ -65,7 +67,7 @@ module cpu(clk, rst_n, hlt, pc);
 	assign BranchType = 1;
 
 	// BranchIns, 1 if opcode is a branch instruction, 0 if not
-	assign BranchIns = 1;
+	assign BranchIns = 0;
 
 	// Halt
 	assign Halt = &opcode;
@@ -83,11 +85,9 @@ module cpu(clk, rst_n, hlt, pc);
 
 	///////////// FLAG REGISTER END /////////////////////
 
-	// Register and ALU wires
-	wire [15:0] reg_data1, reg_data2, reg_wrt_data, SrcReg1_in, SrcReg2_in;
-	wire [15:0] ALU_In1, ALU_In2, RegFile_SrcData2, ALU_Out, ALU_mux_out, loaded_byte;
-
 	////////////// PC and PC control /////////////////////
+	assign hlt = Halt;
+	assign pc = PC_out;
 	PC iPC(.clk(clk), .rst(rst_reg), .write_en(1'b1), .PC_in(PC_in), .PC_out(PC_out));
 	//PC control needs to be changed to take care of branch register ins
 	PC_control iPC_control(
@@ -129,7 +129,8 @@ module cpu(clk, rst_n, hlt, pc);
 	RegisterFile IREGFILE(.clk(clk), .rst(rst_reg), .SrcReg1(SrcReg1_in), .SrcReg2(SrcReg2_in), .DstReg(imem_data_out[11:8]), 
 			.WriteReg(RegWrite), .DstData(reg_wrt_data), .SrcData1(reg_data1), .SrcData2(reg_data2));
 
-	assign reg_wrt_data = MemtoReg ? dmem_data_out : (PCtoReg ? PC_out: ALU_mux_out);
+	//PC_in here, because it will be the output from PC_control, which is the already incremented PC
+	assign reg_wrt_data = MemtoReg ? dmem_data_out : (PCtoReg ? PC_in: ALU_mux_out);
 	/////////////// Registers End///////////////////
 
 	/////////////// ALU ///////////////////////////
