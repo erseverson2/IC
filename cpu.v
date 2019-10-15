@@ -9,6 +9,11 @@ module cpu(clk, rst_n, hlt, pc);
 	output hlt;
 	output[15:0] pc; // program counter
 
+	// Register and ALU , and PC wires
+	wire [15:0] reg_data1, reg_data2, reg_wrt_data, SrcReg1_in, SrcReg2_in;
+	wire [15:0] ALU_In1, ALU_In2, RegFile_SrcData2, ALU_Out, ALU_mux_out, loaded_byte;
+	wire [15:0] PC_out, PC_in;
+
 	/////////////// Opcodes //////////////////////
 	// ADD		0000
 	// SUB		0001
@@ -35,7 +40,7 @@ module cpu(clk, rst_n, hlt, pc);
 	wire imem_enable;
 	wire imem_wr;
 
-	memorylc IMEM(.data_out(imem_data_out), .data_in(imem_data_in), .addr(imem_addr),
+	memorylc IMEM(.data_out(imem_data_out), .data_in(imem_data_in), .addr(PC_out),
 			.enable(imem_enable), .wr(imem_wr), .clk(clk), .rst(~rst_n));
 	/////////////// I-MEM END////////////////////////
 
@@ -48,7 +53,7 @@ module cpu(clk, rst_n, hlt, pc);
 	assign ALUSRC = ((~opcode[3]) & opcode[2]) & (~(opcode[1] & opcode[0]));
 
 	// RegWrite determines if writedata[15:0] will be writen into Dstreg
-	assign RegWrite = 1;
+	assign RegWrite = (~opcode[3]) | ~(&opcode) ;
 
 	// Reg1Src determines which bits from the opcode is going to used as the address in register src 1
 	//assign Reg1Src = 1;
@@ -85,12 +90,8 @@ module cpu(clk, rst_n, hlt, pc);
 
 	///////////// FLAG REGISTER END /////////////////////
 
-	// Register and ALU wires
-	wire [15:0] reg_data1, reg_data2, reg_wrt_data, SrcReg1_in, SrcReg2_in;
-	wire [15:0] ALU_In1, ALU_In2, RegFile_SrcData2, ALU_Out, ALU_mux_out, loaded_byte;
-
 	////////////// PC and PC control /////////////////////
-	wire [15:0] PC_out, PC_in;
+	
 	PC iPC(.clk(clk), .rst(rst_reg), .write_en(1'b1), .PC_in(PC_in), .PC_out(PC_out));
 	//PC control needs to be changed to take care of branch register ins
 	PC_control iPC_control(
