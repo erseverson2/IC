@@ -159,13 +159,13 @@ module cpu_tb();
    assign RegWrite = DUT.RegWrite;
    // Is memory being read, one bit signal (1 means yes, 0 means no)
    
-   //assign WriteRegister = DUT.decode0.regFile0.writeregsel;
+   assign WriteRegister = DUT.imem_data_out[11:8];
    // The name of the register being written to. (4 bit signal)
 
-   //assign WriteData = DUT.decode0.regFile0.writedata;
+   assign WriteData = DUT.reg_wrt_data;
    // Data being written to the register. (16 bits)
    
-   //assign MemRead =  DUT.memory0.memRead;
+   assign MemRead = DUT.MemtoReg;
    // Is memory being read, one bit signal (1 means yes, 0 means no)
    
    assign MemWrite = DUT.MemWrite;
@@ -174,7 +174,7 @@ module cpu_tb();
    assign MemAddress = DUT.ALU_Out;
    // Address to access memory with (for both reads and writes to memory, 16 bits)
    
-   //assign MemData = DUT.memory0.writeData;
+   assign MemData = DUT.dmem_data_in;
    // Data to be written to memory for memory writes (16 bits)
    
    //assign Halt = DUT.memory0.halt; //You won't need this because it's part of the main cpu interface

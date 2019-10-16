@@ -35,13 +35,9 @@ module cpu(clk, rst_n, hlt, pc);
 
 	/////////////// I-MEM ////////////////////////
 	wire[15:0] imem_data_out;
-	wire[15:0] imem_data_in;
-	wire[15:0] imem_addr;
-	wire imem_enable;
-	wire imem_wr;
 
-	memory1c IMEM(.data_out(imem_data_out), .data_in(imem_data_in), .addr(PC_out),
-			.enable(imem_enable), .wr(imem_wr), .clk(clk), .rst(~rst_n));
+	memory1c IMEM(.data_out(imem_data_out), .data_in(), .addr(PC_out),
+			.enable(1'b1), .wr(1'b0), .clk(clk), .rst(~rst_n));
 	/////////////// I-MEM END////////////////////////
 
 	/////////////// Control Signals //////////////
@@ -91,7 +87,8 @@ module cpu(clk, rst_n, hlt, pc);
 	///////////// FLAG REGISTER END /////////////////////
 
 	////////////// PC and PC control /////////////////////
-	
+	assign hlt = Halt;
+	assign pc = PC_out;
 	PC iPC(.clk(clk), .rst(rst_reg), .write_en(1'b1), .PC_in(PC_in), .PC_out(PC_out));
 	//PC control needs to be changed to take care of branch register ins
 	PC_control iPC_control(
@@ -140,7 +137,7 @@ module cpu(clk, rst_n, hlt, pc);
 	/////////////// Registers End///////////////////
 
 	/////////////// ALU ///////////////////////////
-	wire[2:0] ALU_Opcode = pc[13:11];
+	wire[2:0] ALU_Opcode = imem_data_out[13:11];
 	
 
 	// handle Load Byte instructions
@@ -148,7 +145,8 @@ module cpu(clk, rst_n, hlt, pc);
 	assign loaded_byte = opcode[0]? ({{imem_data_out[7:0]},{reg_data2[7:0]}}): ({{reg_data2[15:8]},{imem_data_out[7:0]}});
 	assign ALU_mux_out = LBIns ? loaded_byte : ALU_Out; 
 	// ALUSRC controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
-	assign ALU_In2 = ALUSRC ? {{12{imem_data_out[3]}}, imem_data_out[3:0]}: RegFile_SrcData2;
+	assign ALU_In2 = ALUSRC ? {{12{imem_data_out[3]}}, imem_data_out[3:0]}: reg_data2;
+	assign ALU_In1 = reg_data1;
 
 	ALU iALU(.ALU_Out(ALU_Out), .ALU_In1(ALU_In1), .ALU_In2(ALU_In2), .Opcode(ALU_Opcode), .Flags(FLAGS));
 	/////////////// ALU END/////////////////////////

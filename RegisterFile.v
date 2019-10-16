@@ -8,7 +8,7 @@ input [3:0] RegId,
 output [15:0] Wordline);
 
 
-Shifter s1(.Shift_Out(Wordline), .Shift_In(16'h0001), .Shift_Val(RegId), .Mode(1'b0));
+Shifter_reg s1(.Shift_Out(Wordline), .Shift_In(16'h0001), .Shift_Val(RegId), .Mode(1'b0));
 
 endmodule
 
@@ -18,7 +18,7 @@ input RegWrite,
 output [15:0] Wordline);
 wire [15:0] s_out;
 
-	Shifter s1(.Shift_Out(s_out), .Shift_In(16'h0001), .Shift_Val(RegId), .Mode(1'b0));
+	Shifter_reg s1(.Shift_Out(s_out), .Shift_In(16'h0001), .Shift_Val(RegId), .Mode(1'b0));
 	assign Wordline = (RegWrite) ? s_out : 16'b0;
 
 endmodule
@@ -80,7 +80,7 @@ inout [15:0] SrcData2);
 wire [15:0] src_dec1, src_dec2, write_dec;
 ReadDecoder_4_16 R_D1(.RegId(SrcReg1), .Wordline(src_dec1));
 ReadDecoder_4_16 R_D2(.RegId(SrcReg2), .Wordline(src_dec2));
-WriteDecoder_4_16 W_D(.RegId(DstReg), .WriteReg(WriteReg), .Wordline(write_dec));
+WriteDecoder_4_16 W_D(.RegId(DstReg), .RegWrite(WriteReg), .Wordline(write_dec));
 
 Register Reg_0(.clk(clk),.rst(rst), .D(DstData), .WriteReg(write_dec[0]), .ReadEnable1(src_dec1[0]), .ReadEnable2(src_dec2[0]), .Bitline1(SrcData1), .Bitline2(SrcData2));
 Register Reg_1(.clk(clk),.rst(rst), .D(DstData), .WriteReg(write_dec[1]), .ReadEnable1(src_dec1[1]), .ReadEnable2(src_dec2[1]), .Bitline1(SrcData1), .Bitline2(SrcData2));

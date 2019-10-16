@@ -1,4 +1,4 @@
-module Shifter (Shift_Out, Shift_In, Shift_Val, Mode);
+module Shifter_reg (Shift_Out, Shift_In, Shift_Val, Mode);
 
 input [15:0] Shift_In; // This is the input data to perform shift operation on
 input [3:0] Shift_Val; // Shift amount (used to shift the input data)
