@@ -137,7 +137,7 @@ module cpu(clk, rst_n, hlt, pc);
 	/////////////// Registers End///////////////////
 
 	/////////////// ALU ///////////////////////////
-	wire[2:0] ALU_Opcode = imem_data_out[13:11];
+	wire[2:0] ALU_Opcode = imem_data_out[14:12];
 	
 
 	// handle Load Byte instructions
