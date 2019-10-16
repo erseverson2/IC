@@ -110,11 +110,10 @@ module cpu(clk, rst_n, hlt, pc);
 	wire[15:0] dmem_data_out;
 	wire[15:0] dmem_data_in;
 	wire[15:0] dmem_addr;
-	wire dmem_enable;
 	wire dmem_wr;
 
 	memory1c DMEM(.data_out(dmem_data_out), .data_in(dmem_data_in), .addr(dmem_addr),
-			.enable(dmem_enable), .wr(dmem_wr), .clk(clk), .rst(~rst_n));
+			.enable(1'b1), .wr(dmem_wr), .clk(clk), .rst(~rst_n));
 
 	assign dmem_data_in = reg_data2;
 	assign dmem_addr = ALU_Out;
@@ -137,7 +136,7 @@ module cpu(clk, rst_n, hlt, pc);
 	/////////////// Registers End///////////////////
 
 	/////////////// ALU ///////////////////////////
-	wire[2:0] ALU_Opcode = imem_data_out[14:12];
+	wire[2:0] ALU_Opcode = imem_data_out[15:12] == 4'b1001 ? 3'b000 : imem_data_out[14:12];
 	
 
 	// handle Load Byte instructions
@@ -145,7 +144,7 @@ module cpu(clk, rst_n, hlt, pc);
 	assign loaded_byte = opcode[0]? ({{imem_data_out[7:0]},{reg_data2[7:0]}}): ({{reg_data2[15:8]},{imem_data_out[7:0]}});
 	assign ALU_mux_out = LBIns ? loaded_byte : ALU_Out; 
 	// ALUSRC controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
-	assign ALU_In2 = ALUSRC ? {{12{imem_data_out[3]}}, imem_data_out[3:0]}: reg_data2;
+	assign ALU_In2 = ALUSRC ? {{11{imem_data_out[3]}}, imem_data_out[3:0], 1'b0}: reg_data2;
 	assign ALU_In1 = reg_data1;
 
 	ALU iALU(.ALU_Out(ALU_Out), .ALU_In1(ALU_In1), .ALU_In2(ALU_In2), .Opcode(ALU_Opcode), .Flags(FLAGS));
