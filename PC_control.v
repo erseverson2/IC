@@ -1,7 +1,6 @@
-/* Author: Ilhan Bok
-   Class: ECE 552-1
+/* Class: ECE 552-1
    Group: Memory Loss
-   Last Modified: Oct. 13, 2019 */
+   Last Modified: Nov. 8, 2019 */
    
 module PC_control(
 input [2:0]C, 
@@ -15,8 +14,8 @@ input branch_ins,
 output [15:0]PC_control_out);
 
 assign Z = F[0];
-assign V = F[1];
-assign N = F[2];
+assign N = F[1];
+assign V = F[2];
 
 assign condition_met =	(C == 3'b000) ? ~Z: // Not equal
 			(C == 3'b001) ? Z: // equal
@@ -29,8 +28,8 @@ assign condition_met =	(C == 3'b000) ? ~Z: // Not equal
 
 wire [15:0]branch_address, PC_plus_imm, next_address, PC_plus2;
 
-cla_16bit adder1(.A(PC_control_in), .B(16'h2), .Cin(0), .S(PC_plus2), .Cout(), .Ovfl());
-cla_16bit adder2(.A(PC_plus2), .B({{6{I[8]}},{I[8:0]}, 1'b0}), .Cin(0), .S(PC_plus_imm), .Cout(), .Ovfl());
+cla_16bit adder1(.A(PC_control_in), .B(16'h2), .Cin(1'b0), .S(PC_plus2), .Cout(), .Ovfl());
+cla_16bit adder2(.A(PC_plus2), .B({{6{I[8]}},{I[8:0]}, 1'b0}), .Cin(1'b0), .S(PC_plus_imm), .Cout(), .Ovfl());
 
 // @ branch_type, 0 for B, 1 for Br
 assign branch_address = branch_type? reg2_data : PC_plus_imm; 
