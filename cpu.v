@@ -1,10 +1,16 @@
+/* Class: ECE 552-1
+   Group: Memory Loss
+   Last Modified: Nov. 8, 2019 */
+
 module cpu(clk, rst_n, hlt, pc);
 
 	input clk;
+
 	// Active low reset. A low on this signal resets the processor and causes
 	// execution to start at address 0x0000
 	input rst_n;
 	wire rst_reg = ~rst_n;
+
 	// Assert when HLT encountered, after finishing prior instruction
 	output hlt;
 	output[15:0] pc; // program counter
@@ -14,6 +20,7 @@ module cpu(clk, rst_n, hlt, pc);
 	wire [3:0] SrcReg1_in, SrcReg2_in;
 	wire [15:0] ALU_In1, ALU_In2, RegFile_SrcData2, ALU_Out, ALU_mux_out, loaded_byte;
 	wire [15:0] PC_out, PC_in;
+
 	/////////////// Opcodes //////////////////////
 	// ADD		0000
 	// SUB		0001
@@ -33,16 +40,39 @@ module cpu(clk, rst_n, hlt, pc);
 	// HLT		1111
 	/////////////// Opcodes //////////////////////
 
-	/////////////// I-MEM ////////////////////////
-	wire[15:0] imem_data_out;
+/////////////// FETCH (IF) ///////////////////////////
 
+	///////////// Instruction Memory /////////////
+	wire[15:0] imem_data_out;
 	memory1c IMEM(.data_out(imem_data_out), .data_in(), .addr(PC_out),
 			.enable(1'b1), .wr(1'b0), .clk(clk), .rst(~rst_n));
-	/////////////// I-MEM END////////////////////////
+
+	//------------- PC and PC control ------------
+	wire[2:0] FLAGS, ALU_FLAG_out;
+	FlagRegister iFG(.flag_reg_input(ALU_FLAG_out), .flag_reg_output(FLAGS), .clk(clk), .wen(~Halt), .rst(rst_reg));
+
+	PC iPC(.clk(clk), .rst(rst_reg), .write_en(1'b1), .PC_in(PC_in), .PC_out(PC_out));
+
+	// TODO (who wrote this?): PC control needs to be changed to take care of branch register ins
+	PC_control iPC_control(
+	.C(imem_data_out[11:9]), 
+	.I(imem_data_out[8:0]),
+	.F(FLAGS),
+	.PC_control_in(PC_out),
+	.reg2_data(reg_data1),
+	.branch_type(BranchType),
+	.halt(Halt),
+	.branch_ins(BranchIns),
+	.PC_control_out(PC_in)
+	);
+
+	assign hlt = Halt;
+	assign pc = PC_out;
+
+/////////////// DECODE (ID) ////////////////////////////
 
 	/////////////// Control Signals //////////////
-	wire [3:0]opcode;
-	wire [2:0]FLAGS, ALU_FLAG_out;
+	wire[3:0] opcode;
 	assign opcode = imem_data_out[15 : 12];
 	
 	// ALUSRC controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
@@ -51,8 +81,6 @@ module cpu(clk, rst_n, hlt, pc);
 	// RegWrite determines if writedata[15:0] will be writen into Dstreg
 	assign RegWrite = (~opcode[3]) | opcode[3]&((~opcode[2]&~opcode[1]&~opcode[0])| (~opcode[2]&opcode[1]&~opcode[0])
 							|(~opcode[2]&opcode[1]&opcode[0])|(opcode[2]&opcode[1]&~opcode[0]));
-
-	
 
 	// Reg2Src determines which bits from the opcode is going to used as the address in register src 2
 	// Reg2Src only need to be asserted to 1 for SW, LLB, LHB
@@ -81,49 +109,12 @@ module cpu(clk, rst_n, hlt, pc);
 
 	///////////// Control Signals END//////////////
 
-	///////////// FLAG Register /////////////////////////
-	FlagRegister iFG(.flag_reg_input(ALU_FLAG_out), .flag_reg_output(FLAGS), .clk(clk), .wen(~Halt), .rst(rst_reg));
-
-	///////////// FLAG REGISTER END /////////////////////
-
-	////////////// PC and PC control /////////////////////
-	assign hlt = Halt;
-	assign pc = PC_out;
-	PC iPC(.clk(clk), .rst(rst_reg), .write_en(1'b1), .PC_in(PC_in), .PC_out(PC_out));
-	//PC control needs to be changed to take care of branch register ins
-	PC_control iPC_control(
-	.C(imem_data_out[11:9]), 
-	.I(imem_data_out[8:0]),
-	.F(FLAGS),
-	.PC_control_in(PC_out),
-	.reg2_data(reg_data1),
-	.branch_type(BranchType),
-	.halt(Halt),
-	.branch_ins(BranchIns),
-	.PC_control_out(PC_in)
-	);
-
-
-	////////////// PC control END /////////////////
-
-	/////////////// D-MEM //////////////////////////
-	wire[15:0] dmem_data_out;
-	wire[15:0] dmem_data_in;
-	wire[15:0] dmem_addr;
-	wire dmem_wr;
-
-	memory1c DMEM(.data_out(dmem_data_out), .data_in(dmem_data_in), .addr(dmem_addr),
-			.enable(1'b1), .wr(dmem_wr), .clk(clk), .rst(~rst_n));
-
-	assign dmem_data_in = reg_data2;
-	assign dmem_addr = ALU_Out;
-	assign dmem_wr = MemWrite;
-	/////////////// D-MEM END////////////////////////
-
 	/////////////// Registers //////////////////////
 	// @ imem_data_out[7:4] is Rs
 	// @ imem_data_out[3:0] is Rt in [OPCODE][Rd][Rs][Rt/imm]
 	// @ imem_data_out[11:8]
+
+	wire[15:0] dmem_data_out;
 	
 	// Reg2Src determines which bits from the instruction is going to used as the address in register src 2. 1 for []
 	assign SrcReg1_in = imem_data_out[7:4];
@@ -134,6 +125,8 @@ module cpu(clk, rst_n, hlt, pc);
 	//PC_in here, because it will be the output from PC_control, which is the already incremented PC
 	assign reg_wrt_data = MemtoReg ? dmem_data_out : (PCtoReg ? PC_in: ALU_mux_out);
 	/////////////// Registers End///////////////////
+
+/////////////// EXECUTE (EX) /////////////////////////
 
 	/////////////// ALU ///////////////////////////
 	wire[2:0] ALU_Opcode = imem_data_out[15:12] == 4'b1001 ? 3'b000 : imem_data_out[14:12];
@@ -150,5 +143,23 @@ module cpu(clk, rst_n, hlt, pc);
 	ALU iALU(.ALU_Out(ALU_Out), .ALU_In1(ALU_In1), .ALU_In2(ALU_In2), .Opcode(ALU_Opcode), .Flags(FLAGS));
 	/////////////// ALU END/////////////////////////
 
+/////////////// MEMORY (MEM) /////////////////////////
+
+	/////////////// D-MEM //////////////////////////
+	wire[15:0] dmem_data_in;
+	wire[15:0] dmem_addr;
+	wire dmem_wr;
+
+	memory1c DMEM(.data_out(dmem_data_out), .data_in(dmem_data_in), .addr(dmem_addr),
+			.enable(1'b1), .wr(dmem_wr), .clk(clk), .rst(~rst_n));
+
+	assign dmem_data_in = reg_data2;
+	assign dmem_addr = ALU_Out;
+	assign dmem_wr = MemWrite;
+	/////////////// D-MEM END////////////////////////
+
+/////////////// WRITEBACK (WB) ///////////////////////
+
+	// Nothing ?
 	
 endmodule
