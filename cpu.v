@@ -19,7 +19,8 @@ module cpu(clk, rst_n, hlt, pc);
 	wire [15:0] reg_data1, reg_data2, reg_wrt_data;
 	wire [3:0] SrcReg1_in, SrcReg2_in;
 	wire [15:0] ALU_In1, ALU_In2, RegFile_SrcData2, ALU_Out, ALU_mux_out, loaded_byte;
-	wire [15:0] PC_out, PC_in;
+	wire [15:0] PC_out_to_IFID, PC_out_from_IFID;
+	wire [15:0] PC_in;
 
 	/////////////// Opcodes //////////////////////
 	// ADD		0000
@@ -43,21 +44,30 @@ module cpu(clk, rst_n, hlt, pc);
 /////////////// FETCH (IF) ///////////////////////////
 
 	///////////// Instruction Memory /////////////
-	wire[15:0] imem_data_out_to_IFID;
-	memory1c IMEM(.data_out(imem_data_out_to_IFID), .data_in(), .addr(PC_out),
+	wire[15:0] imem_data_out_to_IFID, imem_data_out_from_IFID;
+	memory1c IMEM(.data_out(imem_data_out_to_IFID), .data_in(), .addr(PC_out_to_IFID),
 			.enable(1'b1), .wr(1'b0), .clk(clk), .rst(~rst_n));
+
+	//////////////// Opcode and control //////////
+	wire[3:0] opcode;// TODO: forward opcode to ID?
+	assign opcode = imem_data_out_to_IFID[15 : 12];
+	// BranchType 0 if its Branch immediate ins, 1 if Branch Register
+	assign BranchType = opcode[0];
+
+	// BranchIns, 1 if opcode is a branch instruction, 0 if not
+	assign BranchIns = opcode[3]&opcode[2]&~opcode[1];
 
 	/////////////// PC and PC control ////////////
 	wire[2:0] FLAGS, ALU_FLAG_out;
 	FlagRegister iFG(.flag_reg_input(ALU_FLAG_out), .flag_reg_output(FLAGS), .clk(clk), .wen(~Halt), .rst(rst_reg));
 
-	PC iPC(.clk(clk), .rst(rst_reg), .write_en(1'b1), .PC_in(PC_in), .PC_out(PC_out));
+	PC iPC(.clk(clk), .rst(rst_reg), .write_en(1'b1), .PC_in(PC_in), .PC_out(PC_out_to_IFID));
 
 	PC_control iPC_control(
 	.C(imem_data_out_to_IFID[11:9]), 
 	.I(imem_data_out_to_IFID[8:0]),
 	.F(FLAGS),
-	.PC_control_in(PC_out),
+	.PC_control_in(PC_out_to_IFID),
 	.reg2_data(reg_data1),
 	.branch_type(BranchType),
 	.halt(Halt),
@@ -66,12 +76,12 @@ module cpu(clk, rst_n, hlt, pc);
 	);
 
 	assign hlt = Halt;
-	assign pc = PC_out;
+	assign pc = PC_out_to_IFID;
 
 /////////////// IF/ID ///////////////////////////
 
-	Bit16Reg iPC_reg_IFID(.clk(clk), .rst(rst_reg), .write_en, .reg_in(PC_out_to_IFID), .reg_out(PC_out_from_IFID));
-	Bit16Reg IMEM_reg_IFID(.clk(clk), .rst(rst_reg), .write_en, .reg_in(imem_data_out_to_IFID), .reg_out(imem_data_out_from_IFID));
+	pipeline_IFID iPipe_IFID(.clk(clk), .rst(rst_reg), .PC_out_to_IFID(PC_out_to_IFID), .PC_out_from_IFID(PC_out_from_IFID),
+			.imem_data_out_to_IFID(imem_data_out_to_IFID), .imem_data_out_from_IFID(imem_data_out_from_IFID));
 
 /////////////// DECODE (ID) ////////////////////////////
 
@@ -96,9 +106,6 @@ module cpu(clk, rst_n, hlt, pc);
 	// @ BranchType
 	// @ BranchIns
 	//////////////////////////////////////////////	
-
-	wire[3:0] opcode;
-	assign opcode = imem_data_out_from_IFID[15 : 12];
 	
 	// ALUSrc controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
 	assign ALUSrc = opcode[3]| (opcode[2] & (~(opcode[1]&opcode[0])));
@@ -116,12 +123,6 @@ module cpu(clk, rst_n, hlt, pc);
 
 	// MemWrite determines if [15:0] data from Register output 2 gets writen into address from ALU output
 	assign MemWrite = opcode[3]&~opcode[2]&~opcode[1]&opcode[0];
-
-	// BranchType 0 if its Branch immediate ins, 1 if Branch Register
-	assign BranchType = opcode[0];
-
-	// BranchIns, 1 if opcode is a branch instruction, 0 if not
-	assign BranchIns = opcode[3]&opcode[2]&~opcode[1];
 
 	// Halt
 	assign Halt = &opcode;
@@ -142,10 +143,10 @@ module cpu(clk, rst_n, hlt, pc);
 	wire[15:0] dmem_data_out;
 	
 	// Reg2Src determines which bits from the instruction is going to used as the address in register src 2. 1 for []
-	assign SrcReg1_in_to_IDEX = imem_data_out_from_IFID[7:4];
-	assign SrcReg2_in_to_IDEX = Reg2Src? imem_data_out_from_IFID[11:8] :imem_data_out_from_IFID[3:0];
-	RegisterFile IREGFILE(.clk(clk), .rst(rst_reg), .SrcReg1(SrcReg1_in_to_IDEX), .SrcReg2(SrcReg2_in_to_IDEX), .DstReg(imem_data_out_from_IFID[11:8]), 
-			.WriteReg(RegWrite), .DstData(reg_wrt_data), .SrcData1(reg_data1_to_IDEX), .SrcData2(reg_data2_to_IDEX));
+	assign SrcReg1_in = imem_data_out_from_IFID[7:4];
+	assign SrcReg2_in = Reg2Src? imem_data_out_from_IFID[11:8] :imem_data_out_from_IFID[3:0];
+	RegisterFile IREGFILE(.clk(clk), .rst(rst_reg), .SrcReg1(SrcReg1_in), .SrcReg2(SrcReg2_in), .DstReg(imem_data_out_from_IFID[11:8]), 
+			.WriteReg(RegWrite), .DstData(reg_wrt_data), .SrcData1(reg_data1), .SrcData2(reg_data2));
 
 	//PC_in here, because it will be the output from PC_control, which is the already incremented PC
 	assign reg_wrt_data = MemtoReg ? dmem_data_out : (PCtoReg ? PC_in: ALU_mux_out);
@@ -153,37 +154,33 @@ module cpu(clk, rst_n, hlt, pc);
 
 /////////////// ID/EX ///////////////////////////
 
-	Bit16Reg RF1_reg_IDEX(.clk(clk), .rst(rst_reg), .write_en, .reg_in(reg_data1_to_IDEX), .reg_out(reg_data1_from_IDEX));
-	Bit16Reg RF2_reg_IDEX(.clk(clk), .rst(rst_reg), .write_en, .reg_in(reg_data2_to_IDEX), .reg_out(reg_data2_from_IDEX));
+	/*Bit16Reg RF1_reg_IDEX(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(reg_data1_to_IDEX), .reg_out(reg_data1_from_IDEX));
+	Bit16Reg RF2_reg_IDEX(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(reg_data2_to_IDEX), .reg_out(reg_data2_from_IDEX));
 
-	Bit4Reg FWD_reg1_IDEX(.clk(clk), .rst(rst_reg), .write_en, .reg_in(SrcReg1_in_to_IDEX), .reg_out(SrcReg1_in_from_IDEX));
-	Bit4Reg FWD_reg2_IDEX(.clk(clk), .rst(rst_reg), .write_en, .reg_in(SrcReg2_in_to_IDEX), .reg_out(SrcReg2_in_from_IDEX));
-
-	// Control Signals //
-	dff ALUSrc_IDEX(.q(ALUSrc_EX), .d(ALUSrc_ID), .wen(1'b1), .clk(clk), .rst(rst_reg));
-	dff LBIns_IDEX(.q(LBIns_EX), .d(LBIns_ID), .wen(1'b1), .clk(clk), .rst(rst_reg));
+	Bit4Reg FWD_reg1_IDEX(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(SrcReg1_in_to_IDEX), .reg_out(SrcReg1_in_from_IDEX));
+	Bit4Reg FWD_reg2_IDEX(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(SrcReg2_in_to_IDEX), .reg_out(SrcReg2_in_from_IDEX));*/
 
 /////////////// EXECUTE (EX) /////////////////////////
 
 	/////////////// ALU ///////////////////////////
-	wire[2:0] ALU_Opcode = imem_data_out[15:12] == 4'b1001 ? 3'b000 : imem_data_out[14:12];
+	wire[2:0] ALU_Opcode = imem_data_out_from_IFID[15:12] == 4'b1001 ? 3'b000 : imem_data_out_from_IFID[14:12];
 	
 	// handle Load Byte instructions
 	// if opcode[0] is true, then it is load higher byte, lower byte otherwise
-	assign loaded_byte = opcode[0]? ({{imem_data_out[7:0]},{reg_data2_from_IDEX[7:0]}}): ({{reg_data2_from_IDEX[15:8]},{imem_data_out[7:0]}});
-	assign ALU_mux_out_to_EXMEM = LBIns ? loaded_byte : ALU_Out_to_EXMEM; 
+	assign loaded_byte = opcode[0]? ({{imem_data_out_from_IFID[7:0]},{reg_data2[7:0]}}): ({{reg_data2[15:8]},{imem_data_out_from_IFID[7:0]}});
+	assign ALU_mux_out = LBIns ? loaded_byte : ALU_Out; 
 	// ALUSrc controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
-	assign ALU_In1 = fwd_ALU_1 ? ALU_src1_fwd : reg_data1_from_IDEX;
-	assign ALU_In2 = fwd_ALU_2 ? ALU_src2_fwd : (ALUSrc ? {{11{imem_data_out[3]}}, imem_data_out[3:0], 1'b0}: reg_data2_from_IDEX);
+	assign ALU_In1 = reg_data1;//fwd_ALU_1 ? ALU_src1_fwd : reg_data1_from_IDEX;
+	assign ALU_In2 = ALUSrc ? {{11{imem_data_out_from_IFID[3]}}, imem_data_out_from_IFID[3:0], 1'b0}: reg_data2;//fwd_ALU_2 ? ALU_src2_fwd : (ALUSrc ? {{11{imem_data_out[3]}}, imem_data_out[3:0], 1'b0}: reg_data2_from_IDEX);
 
-	ALU iALU(.ALU_Out(ALU_Out_to_EXMEM), .ALU_In1(ALU_In1), .ALU_In2(ALU_In2), .Opcode(ALU_Opcode), .Flags(FLAGS));
+	ALU iALU(.ALU_Out(ALU_Out), .ALU_In1(ALU_In1), .ALU_In2(ALU_In2), .Opcode(ALU_Opcode), .Flags(FLAGS));
 	/////////////// ALU END/////////////////////////
 
 /////////////// EX/MEM ///////////////////////////
 
-	Bit16Reg LB_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en, .reg_in(ALU_mux_out_to_EXMEM), .reg_out(ALU_mux_out_from_EXMEM));
-	Bit16Reg ALU_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en, .reg_in(ALU_Out_to_EXMEM), .reg_out(ALU_Out_from_EXMEM));
-	Bit16Reg REG_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en, .reg_in(ALU_In2), .reg_out(ALU_In2_from_EXMEM));
+	/*Bit16Reg LB_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(ALU_mux_out_to_EXMEM), .reg_out(ALU_mux_out_from_EXMEM));
+	Bit16Reg ALU_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(ALU_Out_to_EXMEM), .reg_out(ALU_Out_from_EXMEM));
+	Bit16Reg REG_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(ALU_In2), .reg_out(ALU_In2_from_EXMEM));*/
 
 /////////////// MEMORY (MEM) /////////////////////////
 
@@ -192,17 +189,17 @@ module cpu(clk, rst_n, hlt, pc);
 	wire[15:0] dmem_addr;
 	wire dmem_wr;
 
-	memory1c DMEM(.data_out(dmem_data_out_to_MEMWB), .data_in(dmem_data_in), .addr(dmem_addr),
+	memory1c DMEM(.data_out(dmem_data_out), .data_in(dmem_data_in), .addr(dmem_addr),
 			.enable(1'b1), .wr(dmem_wr), .clk(clk), .rst(~rst_n));
 
-	assign dmem_data_in = fwd_MEM ? MEM_src1_fwd : ALU_In2_from_EXMEM;
-	assign dmem_addr = ALU_Out_from_EXMEM;
+	assign dmem_data_in = ALU_In2;//fwd_MEM ? MEM_src1_fwd : ALU_In2_from_EXMEM;
+	assign dmem_addr = ALU_Out;
 	assign dmem_wr = MemWrite;
 	/////////////// D-MEM END////////////////////////
 
 /////////////// MEM/WB ///////////////////////////
 
-	Bit16Reg DMEM_reg_MEMWB(.clk(clk), .rst(rst_reg), .write_en, .reg_in(dmem_data_out_to_MEMWB), .reg_out(dmem_data_out_from_MEMWB));
+	//Bit16Reg DMEM_reg_MEMWB(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(dmem_data_out_to_MEMWB), .reg_out(dmem_data_out_from_MEMWB));
 
 /////////////// WRITEBACK (WB) ///////////////////////
 
