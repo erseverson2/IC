@@ -1,6 +1,6 @@
 /* Class: ECE 552-1
    Group: Memory Loss
-   Last Modified: Nov. 8, 2019 */
+   Last Modified: Nov. 11, 2019 */
 
 module cpu(clk, rst_n, hlt, pc);
 
@@ -16,8 +16,8 @@ module cpu(clk, rst_n, hlt, pc);
 	output[15:0] pc; // program counter
 
 	// Register and ALU , and PC wires
-	wire [15:0] reg_data1, reg_data2, reg_wrt_data;
-	wire [3:0] SrcReg1_in, SrcReg2_in;
+	wire [15:0] reg_wrt_data;
+	wire[15:0] reg_data1_from_IDEX;
 	wire [15:0] ALU_In1, ALU_In2, RegFile_SrcData2, ALU_Out, ALU_mux_out, loaded_byte;
 	wire [15:0] PC_out_to_IFID, PC_out_from_IFID;
 	wire [15:0] PC_in;
@@ -49,7 +49,7 @@ module cpu(clk, rst_n, hlt, pc);
 			.enable(1'b1), .wr(1'b0), .clk(clk), .rst(~rst_n));
 
 	//////////////// Opcode and control //////////
-	wire[3:0] opcode;// TODO: forward opcode to ID?
+	wire[3:0] opcode;// TODO: remove this later
 	assign opcode = imem_data_out_to_IFID[15 : 12];
 	// BranchType 0 if its Branch immediate ins, 1 if Branch Register
 	assign BranchType = opcode[0];
@@ -103,6 +103,8 @@ module cpu(clk, rst_n, hlt, pc);
 	// @ MemtoReg
 	// @ PCtoReg
 	// @ Halt
+	//
+	// Not decided:
 	// @ BranchType
 	// @ BranchIns
 	//////////////////////////////////////////////	
@@ -133,6 +135,8 @@ module cpu(clk, rst_n, hlt, pc);
 	// PCtoReg, 1 if want to write PC to dstReg
 	assign PCtoReg = opcode[3]&opcode[2]&opcode[1]&~opcode[0];
 
+	wire[2:0] ALU_Opcode = opcode == 4'b1001 ? 3'b000 : opcode[2:0];
+
 	///////////// Control Signals END//////////////
 
 	/////////////// Registers //////////////////////
@@ -141,12 +145,20 @@ module cpu(clk, rst_n, hlt, pc);
 	// @ imem_data_out_from_IFID[11:8]
 
 	wire[15:0] dmem_data_out;
+	wire[15:0] reg_data1_to_IDEX;
+	wire[15:0] reg_data2_to_IDEX, reg_data2_from_IDEX;
+	wire[3:0] DstReg1_in_to_IDEX, DstReg1_in_from_IDEX;
+	wire[3:0] LLB_LHB_to_IDEX, LLB_LHB_from_IDEX;
+	wire[3:0] SrcReg1_in_to_IDEX, SrcReg1_in_from_IDEX;
+	wire[3:0] SrcReg2_in_to_IDEX, SrcReg2_in_from_IDEX;
 	
 	// Reg2Src determines which bits from the instruction is going to used as the address in register src 2. 1 for []
-	assign SrcReg1_in = imem_data_out_from_IFID[7:4];
-	assign SrcReg2_in = Reg2Src? imem_data_out_from_IFID[11:8] :imem_data_out_from_IFID[3:0];
-	RegisterFile IREGFILE(.clk(clk), .rst(rst_reg), .SrcReg1(SrcReg1_in), .SrcReg2(SrcReg2_in), .DstReg(imem_data_out_from_IFID[11:8]), 
-			.WriteReg(RegWrite), .DstData(reg_wrt_data), .SrcData1(reg_data1), .SrcData2(reg_data2));
+	assign SrcReg1_in_to_IDEX = imem_data_out_from_IFID[7:4];
+	assign SrcReg2_in_to_IDEX = Reg2Src? imem_data_out_from_IFID[11:8] :imem_data_out_from_IFID[3:0];
+	assign DstReg1_in_to_IDEX = imem_data_out_from_IFID[11:8];
+	assign LLB_LHB_to_IDEX = imem_data_out_from_IFID[3:0];
+	RegisterFile IREGFILE(.clk(clk), .rst(rst_reg), .SrcReg1(SrcReg1_in_to_IDEX), .SrcReg2(SrcReg2_in_to_IDEX), .DstReg(DstReg1_in_to_IDEX), 
+			.WriteReg(RegWrite), .DstData(reg_wrt_data), .SrcData1(reg_data1_to_IDEX), .SrcData2(reg_data2_to_IDEX));
 
 	//PC_in here, because it will be the output from PC_control, which is the already incremented PC
 	assign reg_wrt_data = MemtoReg ? dmem_data_out : (PCtoReg ? PC_in: ALU_mux_out);
@@ -160,20 +172,55 @@ module cpu(clk, rst_n, hlt, pc);
 	Bit4Reg FWD_reg1_IDEX(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(SrcReg1_in_to_IDEX), .reg_out(SrcReg1_in_from_IDEX));
 	Bit4Reg FWD_reg2_IDEX(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(SrcReg2_in_to_IDEX), .reg_out(SrcReg2_in_from_IDEX));*/
 
+	wire [2:0] ALU_Opcode_EX;
+	wire ALUSrc_EX, LBIns_EX;
+	wire Control_EX_to_MEM;
+	wire Control_EX_to_WB;
+	
+	// {ALUSRC, LBIns}
+	pipeline_IDEX iPipe_IDEX(.clk(clk), .rst(rst_reg), .ALU_Opcode(ALU_Opcode), .ALUSrc(ALUSrc), .RegWrite(RegWrite), .MemtoReg(MemtoReg), .MemWrite(MemWrite),
+			.Halt(Halt),
+			.LBIns(LBIns), .PCtoReg(PCtoReg), .nop(STALL), .reg_data1_to_IDEX(reg_data1_to_IDEX),
+			.reg_data2_to_IDEX(reg_data2_to_IDEX), .SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX), .SrcReg2_in_to_IDEX(SrcReg2_in_to_IDEX),
+			.DstReg1_in_to_IDEX(DstReg1_in_to_IDEX), .LLB_LHB_to_IDEX(LLB_LHB_to_IDEX), .LLB_LHB_from_IDEX(LLB_LHB_from_IDEX),
+			.to_EXReg({ALU_Opcode_EX, ALUSrc_EX, LBIns_EX}), .to_Mem(Control_EX_to_MEM),
+			.to_WBReg(Control_EX_to_WB), .reg_data1_from_IDEX(reg_data1_from_IDEX), .reg_data2_from_IDEX(reg_data2_from_IDEX),
+			.SrcReg1_in_from_IDEX(SrcReg1_in_from_IDEX), .SrcReg2_in_from_IDEX(SrcReg2_in_from_IDEX), 
+			.DstReg1_in_from_IDEX(DstReg1_in_from_IDEX));
+
 /////////////// EXECUTE (EX) /////////////////////////
 
+	//////////////////////////////////////////////
+	// ID:
+	// @ Reg2Src
+	// 
+	// EX:
+	// @ ALUSrc
+	// @ LBIns
+	//
+	// MEM:
+	// @ MemWrite
+	//
+	// WB:
+	// @ RegWrite
+	// @ MemtoReg
+	// @ PCtoReg
+	// @ Halt
+	// @ BranchType
+	// @ BranchIns
+	//////////////////////////////////////////////
+
 	/////////////// ALU ///////////////////////////
-	wire[2:0] ALU_Opcode = imem_data_out_from_IFID[15:12] == 4'b1001 ? 3'b000 : imem_data_out_from_IFID[14:12];
 	
 	// handle Load Byte instructions
 	// if opcode[0] is true, then it is load higher byte, lower byte otherwise
-	assign loaded_byte = opcode[0]? ({{imem_data_out_from_IFID[7:0]},{reg_data2[7:0]}}): ({{reg_data2[15:8]},{imem_data_out_from_IFID[7:0]}});
-	assign ALU_mux_out = LBIns ? loaded_byte : ALU_Out; 
+	assign loaded_byte = opcode[0]? ({{SrcReg1_in_from_IDEX, LLB_LHB_from_IDEX},{reg_data2_from_IDEX[7:0]}}): ({{reg_data2_from_IDEX[15:8]},{SrcReg1_in_from_IDEX, LLB_LHB_from_IDEX}});
+	assign ALU_mux_out = LBIns_EX ? loaded_byte : ALU_Out; 
 	// ALUSrc controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
-	assign ALU_In1 = reg_data1;//fwd_ALU_1 ? ALU_src1_fwd : reg_data1_from_IDEX;
-	assign ALU_In2 = ALUSrc ? {{11{imem_data_out_from_IFID[3]}}, imem_data_out_from_IFID[3:0], 1'b0}: reg_data2;//fwd_ALU_2 ? ALU_src2_fwd : (ALUSrc ? {{11{imem_data_out[3]}}, imem_data_out[3:0], 1'b0}: reg_data2_from_IDEX);
+	assign ALU_In1 = reg_data1_from_IDEX;//fwd_ALU_1 ? ALU_src1_fwd : reg_data1_from_IDEX;
+	assign ALU_In2 = ALUSrc ? {{11{imem_data_out_from_IFID[3]}}, imem_data_out_from_IFID[3:0], 1'b0}: reg_data2_from_IDEX;//fwd_ALU_2 ? ALU_src2_fwd : (ALUSrc ? {{11{imem_data_out[3]}}, imem_data_out[3:0], 1'b0}: reg_data2_from_IDEX);
 
-	ALU iALU(.ALU_Out(ALU_Out), .ALU_In1(ALU_In1), .ALU_In2(ALU_In2), .Opcode(ALU_Opcode), .Flags(FLAGS));
+	ALU iALU(.ALU_Out(ALU_Out), .ALU_In1(ALU_In1), .ALU_In2(ALU_In2), .Opcode(ALU_Opcode_EX), .Flags(FLAGS));
 	/////////////// ALU END/////////////////////////
 
 /////////////// EX/MEM ///////////////////////////
