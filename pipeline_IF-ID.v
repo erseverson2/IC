@@ -1,9 +1,15 @@
-module pielineIF(clk,rst,,,);
+module pielineIF(
+	input clk,
+	input rst,
+	input [15:0] PC_out_to_IFID,
+	output [15:0] PC_out_from_IFID,
+	input [15:0] imem_data_out_to_IFID,
+	output [15:0] imem_data_out_from_IFID);
 
+	
 
-Register_4_Bit( input clk, input rst, input [3:0] D, input WriteReg, input ReadEnable1, input ReadEnable2, inout [3:0] Bitline1, inout [3:0] Bitline2);
-Register_4_Bit( input clk, input rst, input [3:0] D, input WriteReg, input ReadEnable1, input ReadEnable2, inout [3:0] Bitline1, inout [3:0] Bitline2);
-Register_4_Bit( input clk, input rst, input [3:0] D, input WriteReg, input ReadEnable1, input ReadEnable2, inout [3:0] Bitline1, inout [3:0] Bitline2);
+	Bit16Reg iPC_reg_IFID(.clk(clk), .rst(rst), .write_en(1), .reg_in(PC_out_to_IFID), .reg_out(PC_out_from_IFID));
+	Bit16Reg IMEM_reg_IFID(.clk(clk), .rst(rst), .write_en(1), .reg_in(imem_data_out_to_IFID), .reg_out(imem_data_out_from_IFID));
 
 
 endmodule
