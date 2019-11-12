@@ -217,7 +217,7 @@ module cpu(clk, rst_n, hlt, pc);
 	assign ALU_mux_out = LBIns_EX ? loaded_byte : ALU_Out; 
 	// ALUSrc controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
 	assign ALU_In1 = reg_data1_from_IDEX;//fwd_ALU_1 ? ALU_src1_fwd : reg_data1_from_IDEX;
-	assign ALU_In2 = ALUSrc ? {{11{imem_data_out_from_IFID[3]}}, imem_data_out_from_IFID[3:0], 1'b0}: reg_data2_from_IDEX;//fwd_ALU_2 ? ALU_src2_fwd : (ALUSrc ? {{11{imem_data_out[3]}}, imem_data_out[3:0], 1'b0}: reg_data2_from_IDEX);
+	assign ALU_In2 = ALUSrc_EX ? {{11{imem_data_out_from_IFID[3]}}, imem_data_out_from_IFID[3:0], 1'b0}: reg_data2_from_IDEX;//fwd_ALU_2 ? ALU_src2_fwd : (ALUSrc ? {{11{imem_data_out[3]}}, imem_data_out[3:0], 1'b0}: reg_data2_from_IDEX);
 
 	ALU iALU(.ALU_Out(ALU_Out), .ALU_In1(ALU_In1), .ALU_In2(ALU_In2), .Opcode(ALU_Opcode_EX), .Flags(FLAGS));
 	/////////////// ALU END/////////////////////////
@@ -228,6 +228,19 @@ module cpu(clk, rst_n, hlt, pc);
 	Bit16Reg ALU_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(ALU_Out_to_EXMEM), .reg_out(ALU_Out_from_EXMEM));
 	Bit16Reg REG_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(ALU_In2), .reg_out(ALU_In2_from_EXMEM));*/
 
+	wire MemWrite_MEM;
+	wire[15:0] ALU_Out_MEM, ALU_In2_MEM;
+	wire[2:0] FLAGS_MEM;
+	wire[3:0] Control_MEM_to_WB;
+	wire[3:0] DstReg1_in_from_EXMEM;
+
+	pipeline_EXMEM iPipe_EXMEM(.clk(clk), .rst(rst_reg), .WB(Control_EX_to_WB), .mem(Control_EX_to_MEM), .flagsIn(FLAGS), .reg_data_in(ALU_Out),
+			.rt_in(ALU_In2),
+			.DstReg_in(DstReg1_in_from_IDEX), .MemWrite(MemWrite_MEM), .flagsOut(FLAGS_MEM), .to_WBReg(Control_MEM_to_WB),
+			.reg_data_out(ALU_Out_MEM),
+			.rt_out(ALU_In2_MEM),
+			.DstReg_out(DstReg1_in_from_EXMEM));
+
 /////////////// MEMORY (MEM) /////////////////////////
 
 	/////////////// D-MEM //////////////////////////
@@ -236,11 +249,11 @@ module cpu(clk, rst_n, hlt, pc);
 	wire dmem_wr;
 
 	memory1c DMEM(.data_out(dmem_data_out), .data_in(dmem_data_in), .addr(dmem_addr),
-			.enable(1'b1), .wr(dmem_wr), .clk(clk), .rst(~rst_n));
+			.enable(1'b1), .wr(dmem_wr), .clk(clk), .rst(rst_reg));
 
-	assign dmem_data_in = ALU_In2;//fwd_MEM ? MEM_src1_fwd : ALU_In2_from_EXMEM;
-	assign dmem_addr = ALU_Out;
-	assign dmem_wr = MemWrite;
+	assign dmem_data_in = ALU_In2_MEM;//fwd_MEM ? MEM_src1_fwd : ALU_In2_from_EXMEM;
+	assign dmem_addr = ALU_Out_MEM;
+	assign dmem_wr = MemWrite_MEM;
 	/////////////// D-MEM END////////////////////////
 
 /////////////// MEM/WB ///////////////////////////
