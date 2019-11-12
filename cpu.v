@@ -17,7 +17,7 @@ module cpu(clk, rst_n, hlt, pc);
 
 	// Register and ALU , and PC wires
 	wire [15:0] reg_wrt_data;
-	wire[15:0] reg_data1_from_IDEX;
+	wire [15:0] reg_data1_to_IDEX, reg_data1_from_IDEX;
 	wire [15:0] ALU_In1, ALU_In2, RegFile_SrcData2, ALU_Out, ALU_mux_out, loaded_byte;
 	wire [15:0] PC_out_to_IFID, PC_out_from_IFID;
 	wire [15:0] PC_in;
@@ -68,7 +68,7 @@ module cpu(clk, rst_n, hlt, pc);
 	.I(imem_data_out_to_IFID[8:0]),
 	.F(FLAGS),
 	.PC_control_in(PC_out_to_IFID),
-	.reg2_data(reg_data1),
+	.reg2_data(reg_data1_to_IDEX),// TODO: verify
 	.branch_type(BranchType),
 	.halt(Halt),
 	.branch_ins(BranchIns),
@@ -145,7 +145,6 @@ module cpu(clk, rst_n, hlt, pc);
 	// @ imem_data_out_from_IFID[11:8]
 
 	wire[15:0] dmem_data_out;
-	wire[15:0] reg_data1_to_IDEX;
 	wire[15:0] reg_data2_to_IDEX, reg_data2_from_IDEX;
 	wire[3:0] DstReg1_in_to_IDEX, DstReg1_in_from_IDEX;
 	wire[3:0] LLB_LHB_to_IDEX, LLB_LHB_from_IDEX;
@@ -175,7 +174,7 @@ module cpu(clk, rst_n, hlt, pc);
 	wire [2:0] ALU_Opcode_EX;
 	wire ALUSrc_EX, LBIns_EX;
 	wire Control_EX_to_MEM;
-	wire Control_EX_to_WB;
+	wire [3:0] Control_EX_to_WB;
 	
 	// {ALUSRC, LBIns}
 	pipeline_IDEX iPipe_IDEX(.clk(clk), .rst(rst_reg), .ALU_Opcode(ALU_Opcode), .ALUSrc(ALUSrc), .RegWrite(RegWrite), .MemtoReg(MemtoReg), .MemWrite(MemWrite),
