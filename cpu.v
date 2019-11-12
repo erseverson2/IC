@@ -2,7 +2,12 @@
    Group: Memory Loss
    Last Modified: Nov. 12, 2019 */
 
+//******* FINISH ALL TODO'S before turning in *******//
+
 module cpu(clk, rst_n, hlt, pc);
+
+	wire stall;
+	assign stall = 1'b0; // TODO: remove this after adding forwarding
 
 	input clk;
 
@@ -83,6 +88,7 @@ module cpu(clk, rst_n, hlt, pc);
 	.reg2_data(reg_data1_to_IDEX),// TODO: verify
 	.branch_type(BranchType),
 	.halt(Halt),
+	.stall(stall),
 	.branch_ins(BranchIns),
 	.PC_control_out(PC_in)
 	);
@@ -206,6 +212,7 @@ module cpu(clk, rst_n, hlt, pc);
 	wire [3:0] Control_EX_to_WB;
 	
 	// {ALU_Opcode, ALUSrc, LBIns}
+	// {MemWrite, MemRead}
 	pipeline_IDEX iPipe_IDEX(
 	.clk(clk),
 	.rst(rst_reg),
@@ -218,7 +225,7 @@ module cpu(clk, rst_n, hlt, pc);
 	.Halt(Halt),
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
-	.nop(1'b0),//TODO: add nop
+	.nop(stall),
 	.reg_data1_to_IDEX(reg_data1_to_IDEX),
 	.reg_data2_to_IDEX(reg_data2_to_IDEX),
 	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
@@ -350,5 +357,13 @@ module cpu(clk, rst_n, hlt, pc);
 /////////////// FORWARDING ///////////////////////////
 
 /////////////// STALLS ///////////////////////////
+
+	hazDetect iHaz(
+	.memRead_DX(Control_EX_to_MEM[0]),
+	.registerRd_DX(DstReg1_in_from_IDEX),
+	.registerRs_FD(SrcReg1_in_to_IDEX),
+	.registerRt_FD(LLB_LHB_to_IDEX),
+	.memWrite_FD(MemWrite),
+	.stall(stall));
 	
 endmodule
