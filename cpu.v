@@ -1,6 +1,6 @@
 /* Class: ECE 552-1
    Group: Memory Loss
-   Last Modified: Nov. 11, 2019 */
+   Last Modified: Nov. 12, 2019 */
 
 module cpu(clk, rst_n, hlt, pc);
 
@@ -135,7 +135,7 @@ module cpu(clk, rst_n, hlt, pc);
 	// PCtoReg, 1 if want to write PC to dstReg
 	assign PCtoReg = opcode[3]&opcode[2]&opcode[1]&~opcode[0];
 
-	wire[2:0] ALU_Opcode = opcode == 4'b1001 ? 3'b000 : opcode[2:0];
+	wire[2:0] ALU_Opcode = (opcode == 4'b1001) ? 3'b000 : opcode[2:0];
 
 	///////////// Control Signals END//////////////
 
@@ -179,7 +179,7 @@ module cpu(clk, rst_n, hlt, pc);
 	// {ALUSRC, LBIns}
 	pipeline_IDEX iPipe_IDEX(.clk(clk), .rst(rst_reg), .ALU_Opcode(ALU_Opcode), .ALUSrc(ALUSrc), .RegWrite(RegWrite), .MemtoReg(MemtoReg), .MemWrite(MemWrite),
 			.Halt(Halt),
-			.LBIns(LBIns), .PCtoReg(PCtoReg), .nop(STALL), .reg_data1_to_IDEX(reg_data1_to_IDEX),
+			.LBIns(LBIns), .PCtoReg(PCtoReg), .nop(1'b0),/*TODO: set nop*/ .reg_data1_to_IDEX(reg_data1_to_IDEX),
 			.reg_data2_to_IDEX(reg_data2_to_IDEX), .SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX), .SrcReg2_in_to_IDEX(SrcReg2_in_to_IDEX),
 			.DstReg1_in_to_IDEX(DstReg1_in_to_IDEX), .LLB_LHB_to_IDEX(LLB_LHB_to_IDEX), .LLB_LHB_from_IDEX(LLB_LHB_from_IDEX),
 			.to_EXReg({ALU_Opcode_EX, ALUSrc_EX, LBIns_EX}), .to_Mem(Control_EX_to_MEM),

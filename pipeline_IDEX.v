@@ -34,12 +34,13 @@ module pipeline_IDEX(
 	wire [15:0] data1;
 	wire [15:0] data2; 
 
-	wire srcReg1; 
-	wire srcReg2; 
-	wire dstReg1;
+	wire [3:0] srcReg1; 
+	wire [3:0] srcReg2; 
+	wire [3:0] dstReg1;
+	wire [3:0] loadByte1;
 
 	// @ EX
-	assign EXReg = nop ? 2'b00 :{ALU_Opcode, ALUSrc, LBIns};
+	assign EXReg = nop ? 5'h00 : {ALU_Opcode, ALUSrc, LBIns};
 	Bit5Reg to_EX(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(EXReg), .reg_out(to_EXReg));
 
 	// @ MEM
@@ -63,8 +64,10 @@ module pipeline_IDEX(
 	assign srcReg1 = nop ? 4'h0: SrcReg1_in_to_IDEX;
 	assign srcReg2 = nop ? 4'h0: SrcReg2_in_to_IDEX;
 	assign dstReg1 = nop ? 4'h0: DstReg1_in_to_IDEX;
-	Bit4Reg FWD_reg1_IDEX(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(SrcReg1_in_to_IDEX), .reg_out(SrcReg1_in_from_IDEX));
-	Bit4Reg FWD_reg2_IDEX(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(SrcReg2_in_to_IDEX), .reg_out(SrcReg2_in_from_IDEX));
-	Bit4Reg FWD_reg3_IDEX(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(DstReg1_in_to_IDEX), .reg_out(DstReg1_in_from_IDEX));
+	assign loadByte1 = nop ? 4'h0: LLB_LHB_to_IDEX;
+	Bit4Reg FWD_reg1_IDEX(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(srcReg1), .reg_out(SrcReg1_in_from_IDEX));
+	Bit4Reg FWD_reg2_IDEX(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(srcReg2), .reg_out(SrcReg2_in_from_IDEX));
+	Bit4Reg FWD_reg3_IDEX(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(dstReg1), .reg_out(DstReg1_in_from_IDEX));
+	Bit4Reg FWD_llhb_IDEX(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(loadByte1), .reg_out(LLB_LHB_from_IDEX));
 
 endmodule
