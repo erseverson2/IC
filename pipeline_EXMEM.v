@@ -1,15 +1,15 @@
-module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, reg_data_in, rt_in, DstReg_in, MemWrite, flagsOut, to_WBReg, reg_data_out, rt_out, DstReg_out);
+module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, reg_data_in, rt_in, DstReg_in, MemWrite, MemRead, flagsOut, to_WBReg, reg_data_out, rt_out, DstReg_out);
 
 	input clk;
 	input rst;
 	input [3:0] WB;
-	input mem;
+	input [1:0] mem;
 	input [2:0] flagsIn;
 	input [15:0] reg_data_in;
 	input [15:0] rt_in;
 	input [3:0] DstReg_in;
 
-	output MemWrite;
+	output MemWrite, MemRead;
 	output [2:0]flagsOut;
 	output [3:0] to_WBReg;
 	output [15:0] reg_data_out;
@@ -17,7 +17,7 @@ module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, reg_data_in, rt_in, DstReg_in,
 	output [3:0] DstReg_out; 
 	
 	// MemWrite
-	dff memReg(.q(MemWrite), .d(mem), .wen(1'b1), .clk(clk), .rst(rst));
+	Bit2Reg memReg(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(mem), .reg_out({MemWrite, MemRead}));
 	// WB
 	Bit4Reg to_WB(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(WB), .reg_out(to_WBReg));
 	// alu data out

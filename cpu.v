@@ -2,7 +2,12 @@
    Group: Memory Loss
    Last Modified: Nov. 12, 2019 */
 
+//******* FINISH ALL TODO'S before turning in *******//
+
 module cpu(clk, rst_n, hlt, pc);
+
+	wire stall;
+	assign stall = 1'b0; // TODO: remove this after adding forwarding
 
 	input clk;
 
@@ -83,6 +88,7 @@ module cpu(clk, rst_n, hlt, pc);
 	.reg2_data(reg_data1_to_IDEX),// TODO: verify
 	.branch_type(BranchType),
 	.halt(Halt),
+	.stall(stall),
 	.branch_ins(BranchIns),
 	.PC_control_out(PC_in)
 	);
@@ -145,6 +151,9 @@ module cpu(clk, rst_n, hlt, pc);
 	// MemWrite determines if [15:0] data from Register output 2 gets writen into address from ALU output
 	assign MemWrite = opcode[3]&~opcode[2]&~opcode[1]&opcode[0];
 
+	// MemRead determines if current instruction is a load
+	assign MemRead = opcode[3]&~opcode[2]&~opcode[1]&~opcode[0];
+
 	// Halt
 	assign Halt = &opcode;
 
@@ -197,18 +206,13 @@ module cpu(clk, rst_n, hlt, pc);
 
 /////////////// ID/EX ///////////////////////////
 
-	/*Bit16Reg RF1_reg_IDEX(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(reg_data1_to_IDEX), .reg_out(reg_data1_from_IDEX));
-	Bit16Reg RF2_reg_IDEX(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(reg_data2_to_IDEX), .reg_out(reg_data2_from_IDEX));
-
-	Bit4Reg FWD_reg1_IDEX(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(SrcReg1_in_to_IDEX), .reg_out(SrcReg1_in_from_IDEX));
-	Bit4Reg FWD_reg2_IDEX(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(SrcReg2_in_to_IDEX), .reg_out(SrcReg2_in_from_IDEX));*/
-
 	wire [2:0] ALU_Opcode_EX;
 	wire ALUSrc_EX, LBIns_EX;
-	wire Control_EX_to_MEM;
+	wire [1:0] Control_EX_to_MEM;
 	wire [3:0] Control_EX_to_WB;
 	
-	// {ALUSRC, LBIns}
+	// {ALU_Opcode, ALUSrc, LBIns}
+	// {MemWrite, MemRead}
 	pipeline_IDEX iPipe_IDEX(
 	.clk(clk),
 	.rst(rst_reg),
@@ -217,10 +221,11 @@ module cpu(clk, rst_n, hlt, pc);
 	.RegWrite(RegWrite),
 	.MemtoReg(MemtoReg),
 	.MemWrite(MemWrite),
+	.MemRead(MemRead),
 	.Halt(Halt),
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
-	.nop(1'b0),//TODO: add nop
+	.nop(stall),
 	.reg_data1_to_IDEX(reg_data1_to_IDEX),
 	.reg_data2_to_IDEX(reg_data2_to_IDEX),
 	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
@@ -287,11 +292,7 @@ module cpu(clk, rst_n, hlt, pc);
 
 /////////////// EX/MEM ///////////////////////////
 
-	/*Bit16Reg LB_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(ALU_mux_out_to_EXMEM), .reg_out(ALU_mux_out_from_EXMEM));
-	Bit16Reg ALU_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(ALU_Out_to_EXMEM), .reg_out(ALU_Out_from_EXMEM));
-	Bit16Reg REG_reg_EXMEM(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(ALU_In2), .reg_out(ALU_In2_from_EXMEM));*/
-
-	wire MemWrite_MEM;
+	wire MemWrite_MEM, MemRead_MEM;
 	wire[15:0] ALU_mux_out_MEM, ALU_In2_MEM;
 	wire[3:0] Control_MEM_to_WB;
 	wire[3:0] DstReg1_in_from_EXMEM;
@@ -306,6 +307,7 @@ module cpu(clk, rst_n, hlt, pc);
 	.rt_in(ALU_In2),
 	.DstReg_in(DstReg1_in_from_IDEX),
 	.MemWrite(MemWrite_MEM),
+	.MemRead(MemRead_MEM),
 	.flagsOut(FLAGS_MEM),
 	.to_WBReg(Control_MEM_to_WB),
 	.reg_data_out(ALU_mux_out_MEM),
@@ -335,7 +337,6 @@ module cpu(clk, rst_n, hlt, pc);
 
 /////////////// MEM/WB ///////////////////////////
 
-	//Bit16Reg DMEM_reg_MEMWB(.clk(clk), .rst(rst_reg), .write_en(1'b1), .reg_in(dmem_data_out_to_MEMWB), .reg_out(dmem_data_out_from_MEMWB));
 	pipeline_MEMWB iPipe_MEMWB(
 	.clk(clk),
 	.rst(rst_reg),
@@ -354,5 +355,15 @@ module cpu(clk, rst_n, hlt, pc);
 /////////////// WRITEBACK (WB) ///////////////////////
 
 /////////////// FORWARDING ///////////////////////////
+
+/////////////// STALLS ///////////////////////////
+
+	hazDetect iHaz(
+	.memRead_DX(Control_EX_to_MEM[0]),
+	.registerRd_DX(DstReg1_in_from_IDEX),
+	.registerRs_FD(SrcReg1_in_to_IDEX),
+	.registerRt_FD(LLB_LHB_to_IDEX),
+	.memWrite_FD(MemWrite),
+	.stall(stall));
 	
 endmodule

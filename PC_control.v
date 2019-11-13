@@ -10,6 +10,7 @@ input [15:0]PC_control_in,
 input [15:0]reg2_data,
 input branch_type,
 input halt,
+input stall,
 input branch_ins,
 output [15:0]PC_control_out);
 
@@ -34,6 +35,6 @@ cla_16bit adder2(.A(PC_plus2), .B({{6{I[8]}},{I[8:0]}, 1'b0}), .Cin(1'b0), .S(PC
 // @ branch_type, 0 for B, 1 for Br
 assign branch_address = branch_type? reg2_data : PC_plus_imm; 
 assign next_address = (branch_ins & condition_met)? branch_address : PC_plus2;
-assign PC_control_out = halt? PC_control_in: next_address;
+assign PC_control_out = (halt | stall) ? PC_control_in: next_address;
 
 endmodule

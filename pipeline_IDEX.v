@@ -5,7 +5,8 @@ module pipeline_IDEX(
 	input ALUSrc, 
 	input RegWrite, 
 	input MemtoReg, 
-	input MemWrite, 
+	input MemWrite,
+	input MemRead, 
 	//input BranchType, 
 	//input BranchIns, 
 	input Halt, 
@@ -19,7 +20,7 @@ module pipeline_IDEX(
 	input [3:0] DstReg1_in_to_IDEX,
 	input [3:0] LLB_LHB_to_IDEX,
 	output [4:0]to_EXReg,
-	output to_Mem,
+	output [1:0] to_Mem,
 	output [3:0] to_WBReg,
 	output [15:0] reg_data1_from_IDEX,
 	output [15:0] reg_data2_from_IDEX,
@@ -30,7 +31,7 @@ module pipeline_IDEX(
 
 	wire [4:0] EXReg;
 	wire [3:0] WBReg;
-	wire mem;
+	wire [1:0] mem;
 	wire [15:0] data1;
 	wire [15:0] data2; 
 
@@ -44,8 +45,8 @@ module pipeline_IDEX(
 	Bit5Reg to_EX(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(EXReg), .reg_out(to_EXReg));
 
 	// @ MEM
-	assign mem = nop ? 1'b0 : MemWrite;
-	dff MemReg(.q(to_Mem), .d(mem), .wen(1'b1), .clk(clk), .rst(rst));
+	assign mem = nop ? 2'b00 : {MemWrite, MemRead};
+	Bit2Reg MemReg(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(mem), .reg_out(to_Mem));
 
 	// @ WB
 	assign WBReg = nop ? 6'h00 :{RegWrite, MemtoReg, PCtoReg, Halt};
