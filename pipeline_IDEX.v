@@ -1,3 +1,7 @@
+/* Class: ECE 552-1
+   Group: Memory Loss
+   Last Modified: Nov. 13, 2019 */
+
 module pipeline_IDEX(
 	input clk, 
 	input rst,
@@ -19,6 +23,7 @@ module pipeline_IDEX(
 	input [3:0] SrcReg2_in_to_IDEX,
 	input [3:0] DstReg1_in_to_IDEX,
 	input [3:0] LLB_LHB_to_IDEX,
+	output nop_IDEX,
 	output [4:0]to_EXReg,
 	output [1:0] to_Mem,
 	output [3:0] to_WBReg,
@@ -39,6 +44,9 @@ module pipeline_IDEX(
 	wire [3:0] srcReg2; 
 	wire [3:0] dstReg1;
 	wire [3:0] loadByte1;
+
+	// nop forwarding (allows for one-cycle stall)
+	dff (.q(nop_IDEX), .d(nop), .wen(1'b1), .clk(clk), .rst(rst));
 
 	// @ EX
 	assign EXReg = nop ? 5'h00 : {ALU_Opcode, ALUSrc, LBIns};

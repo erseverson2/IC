@@ -1,8 +1,12 @@
 /* Class: ECE 552-1
    Group: Memory Loss
-   Last Modified: Nov. 12, 2019 */
+   Last Modified: Nov. 13, 2019 */
 
 //******* FINISH ALL TODO'S before turning in *******//
+// 1) Does RF bypassing work?
+// 2) Copy to new project and resimulate WITHOUT .v.bak files
+// 3) Run Vcheck.java on all files
+// 4) Turn in all .log and .trace files
 
 module cpu(clk, rst_n, hlt, pc);
 
@@ -59,18 +63,8 @@ module cpu(clk, rst_n, hlt, pc);
 	.clk(clk),
 	.rst(rst_reg));
 
-	//////////////// Opcode and control //////////
-	wire[3:0] opcode;// TODO: remove this later
-	assign opcode = imem_data_out_to_IFID[15 : 12];
-
-	// BranchType 0 if its Branch immediate ins, 1 if Branch Register
-	assign BranchType = opcode[0];
-
-	// BranchIns, 1 if opcode is a branch instruction, 0 if not
-	assign BranchIns = opcode[3]&opcode[2]&~opcode[1];
-
 	/////////////// PC and PC control ////////////
-	wire[2:0] FLAGS, FLAGS_MEM, ALU_FLAG_out;
+	wire[2:0] FLAGS, FLAGS_MEM;
 	wire Halt_WB;
 
 	PC iPC(
@@ -103,6 +97,7 @@ module cpu(clk, rst_n, hlt, pc);
 	pipeline_IFID iPipe_IFID(
 	.clk(clk),
 	.rst(rst_reg),
+	.stall(stall),
 	.PC_out_to_IFID(PC_out_to_IFID),
 	.PC_out_from_IFID(PC_out_from_IFID),
 	.imem_data_out_to_IFID(imem_data_out_to_IFID),
@@ -132,7 +127,18 @@ module cpu(clk, rst_n, hlt, pc);
 	// Not decided:
 	// @ BranchType
 	// @ BranchIns
-	//////////////////////////////////////////////	
+	//////////////////////////////////////////////
+
+	//////////////// Opcode and control //////////
+
+	wire[3:0] opcode;
+	assign opcode = imem_data_out_from_IFID[15 : 12];
+
+	// BranchType 0 if its Branch immediate ins, 1 if Branch Register
+	assign BranchType = opcode[0];
+
+	// BranchIns, 1 if opcode is a branch instruction, 0 if not
+	assign BranchIns = opcode[3]&opcode[2]&~opcode[1];	
 	
 	// ALUSrc controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
 	assign ALUSrc = opcode[3]| (opcode[2] & (~(opcode[1]&opcode[0])));
@@ -210,9 +216,11 @@ module cpu(clk, rst_n, hlt, pc);
 	wire ALUSrc_EX, LBIns_EX;
 	wire [1:0] Control_EX_to_MEM;
 	wire [3:0] Control_EX_to_WB;
+	wire continue; // The forwarded stall signal
 	
 	// {ALU_Opcode, ALUSrc, LBIns}
 	// {MemWrite, MemRead}
+	// {RegWrite, MemtoReg, PCtoReg, Halt}
 	pipeline_IDEX iPipe_IDEX(
 	.clk(clk),
 	.rst(rst_reg),
@@ -226,6 +234,7 @@ module cpu(clk, rst_n, hlt, pc);
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
 	.nop(stall),
+	.nop_IDEX(continue),
 	.reg_data1_to_IDEX(reg_data1_to_IDEX),
 	.reg_data2_to_IDEX(reg_data2_to_IDEX),
 	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
@@ -280,14 +289,8 @@ module cpu(clk, rst_n, hlt, pc);
 	.ALU_In1(ALU_In1),
 	.ALU_In2(ALU_In2),
 	.Opcode(ALU_Opcode_EX),
-	.Flags(ALU_FLAG_out));//TODO: this was just "FLAGS" before
+	.Flags(FLAGS));
 
-	FlagRegister iFG(
-	.flag_reg_input(ALU_FLAG_out),
-	.flag_reg_output(FLAGS),
-	.clk(clk),
-	.wen(~Halt),
-	.rst(rst_reg));
 	/////////////// ALU END/////////////////////////
 
 /////////////// EX/MEM ///////////////////////////
@@ -297,6 +300,7 @@ module cpu(clk, rst_n, hlt, pc);
 	wire[3:0] Control_MEM_to_WB;
 	wire[3:0] DstReg1_in_from_EXMEM;
 
+	// FLAGS register is built into pipeline
 	pipeline_EXMEM iPipe_EXMEM(
 	.clk(clk),
 	.rst(rst_reg),
@@ -364,6 +368,8 @@ module cpu(clk, rst_n, hlt, pc);
 	.registerRs_FD(SrcReg1_in_to_IDEX),
 	.registerRt_FD(LLB_LHB_to_IDEX),
 	.memWrite_FD(MemWrite),
+	.continue(continue),
+	.BranchIns(BranchIns),
 	.stall(stall));
 	
 endmodule
