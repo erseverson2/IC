@@ -1,11 +1,12 @@
-module forwarding_unit(ALU_src1_fwd, ALU_src2_fwd, RegWrite_EXMEM, RegWrite_MEMWB, DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX);
+module forwarding_unit(ALU_src1_fwd, ALU_src2_fwd, LB_ins_fwd, RegWrite_EXMEM, RegWrite_MEMWB, DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX, DstReg1_in_from_IDEX);
 
 input RegWrite_EXMEM; // for ex hazards, The ALU operand is forwarded from the prior ALU result
 input RegWrite_MEMWB; // for memory hazards, The ALU operand is forwarded from data memory or an earlier ALU result.
 
-input [3:0] DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX;
+input [3:0] DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX, DstReg1_in_from_IDEX;
 
 output [1:0] ALU_src1_fwd, ALU_src2_fwd;
+output LB_ins_fwd;
 
 ///////EX hazard forwarding////////////////////////////////////////////
 //if (EX/MEM.RegWrite
@@ -15,9 +16,14 @@ output [1:0] ALU_src1_fwd, ALU_src2_fwd;
 //if (RegWrite_EXMEM
 //and (DstReg1_in_from_EXMEM ? 0)
 //and (DstReg1_in_from_EXMEM = SrcReg2_in_from_IDEX)) ForwardB = 10
+
+//TODO: possible room for logic optimization (redundant logic)?
 assign ALU_src1_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg1_in_from_IDEX);
 
 assign ALU_src2_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg2_in_from_IDEX);
+
+// LLB and LHB forwarding (EX to EX)
+assign LB_ins_fwd = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == DstReg1_in_from_IDEX);
 
 ///////MEM to ex fowarding////////////////////////////////////////////
 //if (MEMWB_RegWrite

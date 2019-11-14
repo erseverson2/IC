@@ -2,13 +2,13 @@
    Group: Memory Loss
    Last Modified: Nov. 13, 2019 */
 
-module hazDetect(memRead_DX, registerRd_DX, registerRs_FD, registerRt_FD, memWrite_FD, continue, BranchIns, stall);
+module hazDetect(memRead_DX, registerRd_DX, registerRs_FD, registerRt_FD, memWrite_FD, go, BranchIns, stall);
 	input memRead_DX; 	// ID/EX
-	input registerRd_DX;	// ID/EX
-	input registerRs_FD;	// IF/ID
-	input registerRt_FD;	// IF/ID
+	input [3:0] registerRd_DX;	// ID/EX
+	input [3:0] registerRs_FD;	// IF/ID
+	input [3:0] registerRt_FD;	// IF/ID
 	input memWrite_FD;	// IF/ID
-	input continue;
+	input go;
 	input BranchIns;
 	
 	output stall;		//
@@ -20,6 +20,6 @@ module hazDetect(memRead_DX, registerRd_DX, registerRs_FD, registerRt_FD, memWri
 
 	
 	assign stall = (memRead_DX & regRd & (regRD_RS | (regRD_RT & notMemWrite)))
-			| (BranchIns & ~continue);
+			| (BranchIns & ~go);
 
 endmodule

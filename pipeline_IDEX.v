@@ -46,7 +46,7 @@ module pipeline_IDEX(
 	wire [3:0] loadByte1;
 
 	// nop forwarding (allows for one-cycle stall)
-	dff (.q(nop_IDEX), .d(nop), .wen(1'b1), .clk(clk), .rst(rst));
+	dff iNOP(.q(nop_IDEX), .d(nop), .wen(1'b1), .clk(clk), .rst(rst));
 
 	// @ EX
 	assign EXReg = nop ? 5'h00 : {ALU_Opcode, ALUSrc, LBIns};
