@@ -3,12 +3,13 @@
    Last Modified: Nov. 13, 2019 */
 
 //******* FINISH ALL TODO'S before turning in *******//
-// 1) Does RF bypassing work?
-// 2) Copy to new project and resimulate WITHOUT .v.bak files
-// 3) Run Vcheck.java on all files
-// 4) Turn in all .log and .trace files
+// 1) Look at TODO in forwarding_unit.v
+// 2) Does RF bypassing work?
+// 3) Copy to new project and resimulate WITHOUT .v.bak files
+// 4) Run Vcheck.java on all files
+// 5) Turn in all .log and .trace files
 
-module cpu(clk, rst_n, hlt, pc);
+module cpu(clk, rst_n, hlt, pc_out);
 
 	wire stall;
 	assign stall = 1'b0; // TODO: remove this after adding forwarding
@@ -22,7 +23,7 @@ module cpu(clk, rst_n, hlt, pc);
 
 	// Assert when HLT encountered, after finishing prior instruction
 	output hlt;
-	output[15:0] pc; // program counter
+	output[15:0] pc_out; // program counter
 
 	// Register and ALU , and PC wires
 	wire [15:0] reg_wrt_data;
@@ -90,7 +91,7 @@ module cpu(clk, rst_n, hlt, pc);
 	// Actually halt only when Halt reaches WB
 	assign hlt = Halt_WB;
 
-	assign pc = PC_out_to_IFID;
+	assign pc_out = PC_out_to_IFID;
 
 /////////////// IF/ID ///////////////////////////
 
@@ -192,19 +193,20 @@ module cpu(clk, rst_n, hlt, pc);
 	assign DstReg1_in_to_IDEX = imem_data_out_from_IFID[11:8];
 	assign LLB_LHB_to_IDEX = imem_data_out_from_IFID[3:0];
 
+	wire RegWrite_MEMWB, MemtoReg_WB, PCtoReg_WB;
+
 	RegisterFile IREGFILE(
 	.clk(clk),
 	.rst(rst_reg),
 	.SrcReg1(SrcReg1_in_to_IDEX),
 	.SrcReg2(SrcReg2_in_to_IDEX),
 	.DstReg(DstReg1_in_from_MEMWB), 
-	.WriteReg(RegWrite),
+	.WriteReg(RegWrite_MEMWB),
 	.DstData(reg_wrt_data),
 	.SrcData1(reg_data1_to_IDEX),
 	.SrcData2(reg_data2_to_IDEX));
 
 	// PC_in here, because it will be the output from PC_control, which is the already incremented PC
-	wire RegWrite_WB, MemtoReg_WB, PCtoReg_WB;
 	wire[15:0] dmem_data_out_WB;
 	wire[15:0] ALU_mux_out_WB;
 	assign reg_wrt_data = MemtoReg_WB ? dmem_data_out_WB : (PCtoReg_WB ? PC_in: ALU_mux_out_WB);
@@ -216,7 +218,7 @@ module cpu(clk, rst_n, hlt, pc);
 	wire ALUSrc_EX, LBIns_EX;
 	wire [1:0] Control_EX_to_MEM;
 	wire [3:0] Control_EX_to_WB;
-	wire continue; // The forwarded stall signal
+	wire go; // The forwarded stall signal
 	
 	// {ALU_Opcode, ALUSrc, LBIns}
 	// {MemWrite, MemRead}
@@ -234,7 +236,7 @@ module cpu(clk, rst_n, hlt, pc);
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
 	.nop(stall),
-	.nop_IDEX(continue),
+	.nop_IDEX(go),
 	.reg_data1_to_IDEX(reg_data1_to_IDEX),
 	.reg_data2_to_IDEX(reg_data2_to_IDEX),
 	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
@@ -274,15 +276,34 @@ module cpu(clk, rst_n, hlt, pc);
 	//////////////////////////////////////////////
 
 	/////////////// ALU ///////////////////////////
+	wire[1:0] ALU_src1_fwd, ALU_src2_fwd;
+	wire[15:0] load_higher_byte, load_lower_byte;
+	wire[15:0] ALU_mux_out_MEM;
+	wire LB_ins_fwd;
 	
 	// handle Load Byte instructions
 	// if opcode[0] is true, then it is load higher byte, lower byte otherwise
-	assign loaded_byte = ALU_Opcode_EX[0] ? ({{SrcReg1_in_from_IDEX, LLB_LHB_from_IDEX},{reg_data2_from_IDEX[7:0]}}): ({{reg_data2_from_IDEX[15:8]},{SrcReg1_in_from_IDEX, LLB_LHB_from_IDEX}});
+	assign loaded_byte = ALU_Opcode_EX[0] ? load_higher_byte : load_lower_byte;
+	// Determine whether to use forwarded register value or not for:
+	// LOWER 8 bits (LHB)
+	assign load_higher_byte = {{SrcReg1_in_from_IDEX, LLB_LHB_from_IDEX},{
+		(LB_ins_fwd ? ALU_mux_out_MEM[7:0] : reg_data2_from_IDEX[7:0])}};
+	// UPPER 8 bits (LLB)
+	assign load_lower_byte = {{(LB_ins_fwd ? ALU_mux_out_MEM[15:8] : reg_data2_from_IDEX[15:8])},
+		{SrcReg1_in_from_IDEX, LLB_LHB_from_IDEX}};
 	assign ALU_mux_out = LBIns_EX ? loaded_byte : ALU_Out;
 
-	// ALUSrc controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
-	assign ALU_In1 = reg_data1_from_IDEX;
-	assign ALU_In2 = ALUSrc_EX ? {{11{imem_data_out_from_IFID[3]}}, imem_data_out_from_IFID[3:0], 1'b0}: reg_data2_from_IDEX;
+	wire X2X_1, M2X_1, X2X_2, M2X_2;
+	assign X2X_1 = ALU_src1_fwd[1];
+	assign M2X_1 = ALU_src1_fwd[0];
+	assign X2X_2 = ALU_src2_fwd[1];
+	assign M2X_2 = ALU_src2_fwd[0];
+
+	// ALUSrc_EX controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
+	// Also uses forwarded data if necessary
+	assign ALU_In1 = X2X_1 ? ALU_mux_out_MEM : (M2X_1 ? reg_wrt_data : reg_data1_from_IDEX);
+	assign ALU_In2 = X2X_2 ? ALU_mux_out_MEM : (M2X_2 ? reg_wrt_data : 
+						(ALUSrc_EX ? {{11{imem_data_out_from_IFID[3]}}, imem_data_out_from_IFID[3:0], 1'b0}: reg_data2_from_IDEX));
 
 	ALU iALU(
 	.ALU_Out(ALU_Out),
@@ -296,7 +317,7 @@ module cpu(clk, rst_n, hlt, pc);
 /////////////// EX/MEM ///////////////////////////
 
 	wire MemWrite_MEM, MemRead_MEM;
-	wire[15:0] ALU_mux_out_MEM, ALU_In2_MEM;
+	wire[15:0] ALU_In2_MEM;
 	wire[3:0] Control_MEM_to_WB;
 	wire[3:0] DstReg1_in_from_EXMEM;
 
@@ -348,7 +369,7 @@ module cpu(clk, rst_n, hlt, pc);
 	.reg_data_in(ALU_mux_out_MEM),
 	.dmem_in(dmem_data_out),
 	.DstReg_in(DstReg1_in_from_EXMEM),
-	.RegWrite(RegWrite_WB),
+	.RegWrite(RegWrite_MEMWB),
 	.MemtoReg(MemtoReg_WB),
 	.PCtoReg(PCtoReg_WB),
 	.Halt(Halt_WB),
@@ -360,15 +381,27 @@ module cpu(clk, rst_n, hlt, pc);
 
 /////////////// FORWARDING ///////////////////////////
 
+forwarding_unit iFWD(
+	.ALU_src1_fwd(ALU_src1_fwd),
+	.ALU_src2_fwd(ALU_src2_fwd),
+	.LB_ins_fwd(LB_ins_fwd),
+	.RegWrite_EXMEM(Control_MEM_to_WB[3]),
+	.RegWrite_MEMWB(RegWrite_MEMWB),
+	.DstReg1_in_from_EXMEM(DstReg1_in_from_EXMEM),
+	.DstReg1_in_from_MEMWB(DstReg1_in_from_MEMWB),
+	.SrcReg1_in_from_IDEX(SrcReg1_in_from_IDEX),
+	.SrcReg2_in_from_IDEX(SrcReg2_in_from_IDEX),
+	.DstReg1_in_from_IDEX(DstReg1_in_from_IDEX));
+
 /////////////// STALLS ///////////////////////////
 
-	hazDetect iHaz(
+hazDetect iHaz(
 	.memRead_DX(Control_EX_to_MEM[0]),
 	.registerRd_DX(DstReg1_in_from_IDEX),
 	.registerRs_FD(SrcReg1_in_to_IDEX),
 	.registerRt_FD(LLB_LHB_to_IDEX),
 	.memWrite_FD(MemWrite),
-	.continue(continue),
+	.go(go),
 	.BranchIns(BranchIns),
 	.stall(stall));
 	
