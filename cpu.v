@@ -327,7 +327,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	wire MemWrite_MEM, MemRead_MEM;
 	wire[15:0] ALU_In2_MEM;
 	wire[3:0] Control_MEM_to_WB;
-	wire[3:0] DstReg1_in_from_EXMEM;
+	wire[3:0] DstReg1_in_from_EXMEM, SrcReg1_in_from_EXMEM;
 
 	// FLAGS register is built into pipeline
 	pipeline_EXMEM iPipe_EXMEM(
@@ -339,20 +339,22 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.reg_data_in(ALU_mux_out),
 	.rt_in(ALU_In2),
 	.DstReg_in(DstReg1_in_from_IDEX),
+	.SrcReg1_in(SrcReg1_in_from_IDEX),
 	.MemWrite(MemWrite_MEM),
 	.MemRead(MemRead_MEM),
 	.flagsOut(FLAGS_MEM),
 	.to_WBReg(Control_MEM_to_WB),
 	.reg_data_out(ALU_mux_out_MEM),
 	.rt_out(ALU_In2_MEM),
-	.DstReg_out(DstReg1_in_from_EXMEM));
+	.DstReg_out(DstReg1_in_from_EXMEM),
+	.SrcReg1_out(SrcReg1_in_from_EXMEM));
 
 /////////////// MEMORY (MEM) /////////////////////////
 
 	/////////////// D-MEM //////////////////////////
 	wire[15:0] dmem_data_in;
 	wire[15:0] dmem_addr;
-	wire dmem_wr;
+	wire dmem_wr, DMEM_fwd;
 
 	memory1c DMEM(
 	.data_out(dmem_data_out),
@@ -363,7 +365,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.clk(clk),
 	.rst(rst_reg));
 
-	assign dmem_data_in = ALU_In2_MEM;//fwd_MEM ? MEM_src1_fwd : ALU_In2_from_EXMEM;
+	assign dmem_data_in = DMEM_fwd ? dmem_data_out_WB : ALU_In2_MEM;// TODO: should this be reg_wrt_data instead?
 	assign dmem_addr = ALU_mux_out_MEM;
 	assign dmem_wr = MemWrite_MEM;
 	/////////////// D-MEM END////////////////////////
@@ -395,11 +397,14 @@ forwarding_unit iFWD(
 	.LB_ins_fwd(LB_ins_fwd),
 	.RegWrite_EXMEM(Control_MEM_to_WB[3]),
 	.RegWrite_MEMWB(RegWrite_MEMWB),
+	.MemWrite_MEM(MemWrite_MEM),
+	.SrcReg1_in_from_EXMEM(SrcReg1_in_from_EXMEM),
 	.DstReg1_in_from_EXMEM(DstReg1_in_from_EXMEM),
 	.DstReg1_in_from_MEMWB(DstReg1_in_from_MEMWB),
 	.SrcReg1_in_from_IDEX(SrcReg1_in_from_IDEX),
 	.SrcReg2_in_from_IDEX(SrcReg2_in_from_IDEX),
-	.DstReg1_in_from_IDEX(DstReg1_in_from_IDEX));
+	.DstReg1_in_from_IDEX(DstReg1_in_from_IDEX),
+	.DMEM_fwd(DMEM_fwd));
 
 /////////////// STALLS ///////////////////////////
 
