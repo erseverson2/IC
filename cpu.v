@@ -3,18 +3,19 @@
    Last Modified: Nov. 13, 2019 */
 
 //******* FINISH ALL TODO'S before turning in *******//
-// 1) Look at TODO in forwarding_unit.v
-// 2) Does RF bypassing work?
-// 3) Copy to new project and resimulate WITHOUT .v.bak files
-// 4) Run Vcheck.java on all files
-// 5) Turn in all .log and .trace files
+// x) Stall also when BR needs result of LW (implemented)
+// 2) Look at TODO in forwarding_unit.v
+// 3) Do we still need PC forwarding in IFID?
+// x) Does RF bypassing work? (implemented)
+// 5) Run Vcheck.java on all files
+// 6) Copy to new project and resimulate WITHOUT .v.bak files
+// 7) Turn in all .log and .trace files
 
 module cpu(clk, rst_n, hlt, pc_out);
 
-	wire stall;
-	assign stall = 1'b0; // TODO: remove this after adding forwarding
-
 	input clk;
+
+	wire stall;
 
 	// Active low reset. A low on this signal resets the processor and causes
 	// execution to start at address 0x0000
@@ -84,6 +85,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.branch_type(BranchType),
 	.halt(Halt),
 	.stall(stall),
+	.branch_taken(branch_taken),
 	.branch_ins(BranchIns),
 	.PC_control_out(PC_in)
 	);
@@ -99,6 +101,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.clk(clk),
 	.rst(rst_reg),
 	.stall(stall),
+	.flush(branch_taken),
 	.PC_out_to_IFID(PC_out_to_IFID),
 	.PC_out_from_IFID(PC_out_from_IFID),
 	.imem_data_out_to_IFID(imem_data_out_to_IFID),
@@ -218,7 +221,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	wire ALUSrc_EX, LBIns_EX;
 	wire [1:0] Control_EX_to_MEM;
 	wire [3:0] Control_EX_to_WB;
-	wire go; // The forwarded stall signal
+	//wire go; // The forwarded stall signal
 	
 	// {ALU_Opcode, ALUSrc, LBIns}
 	// {MemWrite, MemRead}
@@ -236,7 +239,6 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
 	.nop(stall),
-	.nop_IDEX(go),
 	.reg_data1_to_IDEX(reg_data1_to_IDEX),
 	.reg_data2_to_IDEX(reg_data2_to_IDEX),
 	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
@@ -276,21 +278,24 @@ module cpu(clk, rst_n, hlt, pc_out);
 	//////////////////////////////////////////////
 
 	/////////////// ALU ///////////////////////////
-	wire[1:0] ALU_src1_fwd, ALU_src2_fwd;
+	wire[1:0] ALU_src1_fwd, ALU_src2_fwd, LB_ins_fwd;
 	wire[15:0] load_higher_byte, load_lower_byte;
 	wire[15:0] ALU_mux_out_MEM;
-	wire LB_ins_fwd;
+
+	wire X2X_LB, M2X_LB;
+	wire[15:0] LB_ins_input;
+	assign X2X_LB = LB_ins_fwd[1];
+	assign M2X_LB = LB_ins_fwd[0];
 	
 	// handle Load Byte instructions
 	// if opcode[0] is true, then it is load higher byte, lower byte otherwise
 	assign loaded_byte = ALU_Opcode_EX[0] ? load_higher_byte : load_lower_byte;
-	// Determine whether to use forwarded register value or not for:
+	// Determine whether to use forwarded register value or not
+	assign LB_ins_input = X2X_LB ? ALU_mux_out_MEM : (M2X_LB ? ALU_mux_out_WB : reg_data2_from_IDEX);
 	// LOWER 8 bits (LHB)
-	assign load_higher_byte = {{SrcReg1_in_from_IDEX, LLB_LHB_from_IDEX},{
-		(LB_ins_fwd ? ALU_mux_out_MEM[7:0] : reg_data2_from_IDEX[7:0])}};
+	assign load_higher_byte = {{SrcReg1_in_from_IDEX, LLB_LHB_from_IDEX},{LB_ins_input[7:0]}};
 	// UPPER 8 bits (LLB)
-	assign load_lower_byte = {{(LB_ins_fwd ? ALU_mux_out_MEM[15:8] : reg_data2_from_IDEX[15:8])},
-		{SrcReg1_in_from_IDEX, LLB_LHB_from_IDEX}};
+	assign load_lower_byte = {{LB_ins_input[15:8]},{SrcReg1_in_from_IDEX, LLB_LHB_from_IDEX}};
 	assign ALU_mux_out = LBIns_EX ? loaded_byte : ALU_Out;
 
 	wire X2X_1, M2X_1, X2X_2, M2X_2;
@@ -305,12 +310,15 @@ module cpu(clk, rst_n, hlt, pc_out);
 	assign ALU_In2 = X2X_2 ? ALU_mux_out_MEM : (M2X_2 ? reg_wrt_data : 
 						(ALUSrc_EX ? {{11{imem_data_out_from_IFID[3]}}, imem_data_out_from_IFID[3:0], 1'b0}: reg_data2_from_IDEX));
 
+	wire Flags_Set;
+
 	ALU iALU(
 	.ALU_Out(ALU_Out),
 	.ALU_In1(ALU_In1),
 	.ALU_In2(ALU_In2),
 	.Opcode(ALU_Opcode_EX),
-	.Flags(FLAGS));
+	.Flags(FLAGS),
+	.Flags_Set(Flags_Set));
 
 	/////////////// ALU END/////////////////////////
 
@@ -350,7 +358,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.data_out(dmem_data_out),
 	.data_in(dmem_data_in),
 	.addr(dmem_addr),
-	.enable(1'b1),
+	.enable(MemWrite_MEM | MemRead_MEM),
 	.wr(dmem_wr),
 	.clk(clk),
 	.rst(rst_reg));
@@ -397,12 +405,15 @@ forwarding_unit iFWD(
 
 hazDetect iHaz(
 	.memRead_DX(Control_EX_to_MEM[0]),
+	.memRead_XM(MemRead_MEM),
 	.registerRd_DX(DstReg1_in_from_IDEX),
 	.registerRs_FD(SrcReg1_in_to_IDEX),
 	.registerRt_FD(LLB_LHB_to_IDEX),
+	.registerRd_XM(DstReg1_in_from_EXMEM),
 	.memWrite_FD(MemWrite),
-	.go(go),
+	.Flags_Set(Flags_Set),
 	.BranchIns(BranchIns),
+	.BranchType(BranchType),
 	.stall(stall));
 	
 endmodule
