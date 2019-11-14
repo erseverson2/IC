@@ -33,8 +33,8 @@ module BitCell(clk, rst, D, WriteEnable, ReadEnable1, ReadEnable2,
 
 	dff iFLOP(.q(q), .d(D), .wen(WriteEnable), .clk(clk), .rst(rst));
 	
-	assign Bitline1 = ReadEnable1 ? q : 1'bZ;
- 	assign Bitline2 = ReadEnable2 ? q : 1'bZ;
+	assign Bitline1 = ReadEnable1 ? (WriteEnable ? D : q) : 1'bZ;
+ 	assign Bitline2 = ReadEnable2 ? (WriteEnable ? D : q) : 1'bZ;
 	
 endmodule
 

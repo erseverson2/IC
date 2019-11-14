@@ -5,8 +5,7 @@ input RegWrite_MEMWB; // for memory hazards, The ALU operand is forwarded from d
 
 input [3:0] DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX, DstReg1_in_from_IDEX;
 
-output [1:0] ALU_src1_fwd, ALU_src2_fwd;
-output LB_ins_fwd;
+output [1:0] ALU_src1_fwd, ALU_src2_fwd, LB_ins_fwd;
 
 ///////EX hazard forwarding////////////////////////////////////////////
 //if (EX/MEM.RegWrite
@@ -23,7 +22,7 @@ assign ALU_src1_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in
 assign ALU_src2_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg2_in_from_IDEX);
 
 // LLB and LHB forwarding (EX to EX)
-assign LB_ins_fwd = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == DstReg1_in_from_IDEX);
+assign LB_ins_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == DstReg1_in_from_IDEX);
 
 ///////MEM to ex fowarding////////////////////////////////////////////
 //if (MEMWB_RegWrite
@@ -38,10 +37,14 @@ assign LB_ins_fwd = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from
 //and (EX/MEM.RegisterRd ? ID/EX.RegisterRt))
 //and (MEM/WB.RegisterRd = ID/EX.RegisterRt)) ForwardB = 01
 assign  ALU_src1_fwd[0] = RegWrite_MEMWB & |(DstReg1_in_from_MEMWB) & 
-	~(RegWrite_EXMEM & |(DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM != SrcReg1_in_from_IDEX)) & (DstReg1_in_from_MEMWB == SrcReg1_in_from_IDEX);
+	~(RegWrite_EXMEM & |(DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg1_in_from_IDEX)) & (DstReg1_in_from_MEMWB == SrcReg1_in_from_IDEX);
 
 assign  ALU_src2_fwd[0] = RegWrite_MEMWB & |(DstReg1_in_from_MEMWB) & 
-	~(RegWrite_EXMEM & |(DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM != SrcReg2_in_from_IDEX)) & (DstReg1_in_from_MEMWB == SrcReg2_in_from_IDEX);
+	~(RegWrite_EXMEM & |(DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg2_in_from_IDEX)) & (DstReg1_in_from_MEMWB == SrcReg2_in_from_IDEX);
+
+// LLB and LHB MEM to EX
+assign LB_ins_fwd[0] = RegWrite_MEMWB & |(DstReg1_in_from_MEMWB) &
+	~(RegWrite_EXMEM & |(DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == DstReg1_in_from_IDEX)) & (DstReg1_in_from_MEMWB == DstReg1_in_from_IDEX);
 
 ///////MEM to MEM forwarding
 
