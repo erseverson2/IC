@@ -3,6 +3,7 @@
    Last Modified: Nov. 13, 2019 */
 
 //******* FINISH ALL TODO'S before turning in *******//
+// 1) Stall also when BR needs result of LW
 // 1) Look at TODO in forwarding_unit.v
 // 2) Does RF bypassing work?
 // 3) Copy to new project and resimulate WITHOUT .v.bak files
