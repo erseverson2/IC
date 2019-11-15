@@ -1,11 +1,11 @@
-module forwarding_unit(ALU_src1_fwd, ALU_src2_fwd, LB_ins_fwd, RegWrite_EXMEM, RegWrite_MEMWB, MemWrite_MEM, DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX, DstReg1_in_from_IDEX, SrcReg1_in_from_EXMEM, DMEM_fwd);
+module forwarding_unit(ALU_src1_fwd, ALU_src2_fwd, LB_ins_fwd, RegWrite_EXMEM, RegWrite_MEMWB, MemWrite_MEM, DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX, DstReg1_in_from_IDEX, SrcReg2_in_from_EXMEM, DMEM_fwd);
 
 input RegWrite_EXMEM; // for ex hazards, The ALU operand is forwarded from the prior ALU result
 input RegWrite_MEMWB; // for memory hazards, The ALU operand is forwarded from data memory or an earlier ALU result.
 input MemWrite_MEM; // for mem2mem forwarding (only on stores)
 
 input [3:0] DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX, DstReg1_in_from_IDEX,
-		SrcReg1_in_from_EXMEM;
+		SrcReg2_in_from_EXMEM;
 
 output [1:0] ALU_src1_fwd, ALU_src2_fwd, LB_ins_fwd;
 output DMEM_fwd;
@@ -54,6 +54,6 @@ assign LB_ins_fwd[0] = RegWrite_MEMWB & |(DstReg1_in_from_MEMWB) &
 //and (MEM/WB.RegisterRd = EX/MEM.RegisterRt)
 //) enable MEM-to-MEM forwarding;
 
-assign DMEM_fwd = MemWrite_MEM & RegWrite_MEMWB & (|DstReg1_in_from_MEMWB) & (DstReg1_in_from_MEMWB == SrcReg1_in_from_EXMEM);
+assign DMEM_fwd = MemWrite_MEM & RegWrite_MEMWB & (|DstReg1_in_from_MEMWB) & (DstReg1_in_from_MEMWB == SrcReg2_in_from_EXMEM);
 
 endmodule
