@@ -1,8 +1,8 @@
-module forwarding_unit(ALU_src1_fwd, ALU_src2_fwd, LB_ins_fwd, RegWrite_EXMEM, RegWrite_MEMWB, MemWrite_MEM, DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX, DstReg1_in_from_IDEX, SrcReg2_in_from_EXMEM, DMEM_fwd);
+module forwarding_unit(ALU_src1_fwd, ALU_src2_fwd, LB_ins_fwd, RegWrite_EXMEM, RegWrite_MEMWB, MemWrite_MEM, DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX, DstReg1_in_from_IDEX, SrcReg2_in_from_EXMEM, DMEM_fwd, MemRead_MEM);
 
 input RegWrite_EXMEM; // for ex hazards, The ALU operand is forwarded from the prior ALU result
 input RegWrite_MEMWB; // for memory hazards, The ALU operand is forwarded from data memory or an earlier ALU result.
-input MemWrite_MEM; // for mem2mem forwarding (only on stores)
+input MemWrite_MEM, MemRead_MEM; // for mem2mem forwarding (only on stores)
 
 input [3:0] DstReg1_in_from_EXMEM, DstReg1_in_from_MEMWB, SrcReg1_in_from_IDEX, SrcReg2_in_from_IDEX, DstReg1_in_from_IDEX,
 		SrcReg2_in_from_EXMEM;
@@ -22,7 +22,7 @@ output DMEM_fwd;
 //TODO: possible room for logic optimization (redundant logic)?
 assign ALU_src1_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg1_in_from_IDEX);
 
-assign ALU_src2_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg2_in_from_IDEX);
+assign ALU_src2_fwd[1] = RegWrite_EXMEM & ~MemRead_MEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg2_in_from_IDEX);
 
 // LLB and LHB forwarding (EX to EX)
 assign LB_ins_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == DstReg1_in_from_IDEX);

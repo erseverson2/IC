@@ -1,6 +1,6 @@
 /* Class: ECE 552-1
    Group: Memory Loss
-   Last Modified: Nov. 8, 2019 */
+   Last Modified: Nov. 15, 2019 */
    
 module PC_control(
 input [2:0]C, 
