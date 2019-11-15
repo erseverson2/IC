@@ -1,0 +1,18 @@
+End of file ALU.v. Hash = 667273281
+Line 8: Bad keyword inout
+Line 9: Bad keyword inout
+End of file BitCell.v. Hash = 1572910491
+End of file CLA.v. Hash = 1738553816
+End of file cpu.v. Hash = -510539090
+End of file FlagRegister.v. Hash = -1629406721
+End of file PC_control.v. Hash = 1682385672
+End of file PC.v. Hash = 678403440
+End of file ReadDecoder_4_16.v. Hash = -1591348350
+Line 30: Bad keyword inout
+Line 48: Bad keyword inout
+Line 49: Bad keyword inout
+Line 77: Bad keyword inout
+Line 78: Bad keyword inout
+End of file RegisterFile.v. Hash = -470648134
+End of file Shifter_reg.v. Hash = 1656208277
+End of file WriteDecoder_4_16.v. Hash = -715538935

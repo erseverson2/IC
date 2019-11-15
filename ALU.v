@@ -1,12 +1,13 @@
 /* Group: Memory Loss
    Class: ECE 552-1 */
 
-module ALU(ALU_Out, ALU_In1, ALU_In2, Opcode, Flags);
+module ALU(ALU_Out, ALU_In1, ALU_In2, Opcode, Flags, Flags_Set);
 
 	input[15:0] ALU_In1, ALU_In2;
 	input[2:0] Opcode;
 	output[15:0] ALU_Out;
 	output[2:0] Flags;
+	output Flags_Set;
 	wire V, N, Z;
 	assign Flags[0] = Z;
 	assign Flags[1] = N;
@@ -71,6 +72,9 @@ module ALU(ALU_Out, ALU_In1, ALU_In2, Opcode, Flags);
 			(Opcode == 3'b101) ? Shift_Out :
 			(Opcode == 3'b110) ? Shift_Out :
 			(Opcode == 3'b111) ? PADDSB : 16'h0000;
+
+	// The branch will have to stall if flags are set
+	assign Flags_Set = ~Opcode[1] | (Opcode[1] & ~Opcode[0]);
 
 	// Zero flag
 	assign Z = (Opcode == 3'b000) ? ~|Sum :

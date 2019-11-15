@@ -1,41 +1,42 @@
-/* Author: Ilhan Bok
-   Class: ECE 552-1
+/* Class: ECE 552-1
    Group: Memory Loss
-   Last Modified: Oct. 13, 2019 */
+   Last Modified: Nov. 8, 2019 */
    
-module PC_control(C, I, F, PC_in, PC_out);
+module PC_control(
+input [2:0]C, 
+input [8:0]I, 
+input [2:0]F,
+input [15:0]PC_control_in,
+input [15:0]reg2_data,
+input branch_type,
+input halt,
+input stall,
+input branch_ins,
+output [15:0]PC_control_out,
+output branch_taken);
 
-	input[2:0] C; // Condition codes
-	input[8:0] I; // Branch offset
-	input[2:0] F; // Flags - [2:0](Sign(N), Overflow(V), Zero(Z))
-	wire N, V, Z;
-	wire willBranch;
-	
-	input[15:0] PC_in;
-	output[15:0] PC_out;
-	
-	wire[15:0] inc_addr;
-	wire[15:0] branch_addr;
-	wire[9:0] I_shift;
-	
-	assign I_shift = I << 1;
-	
-	cla_16bit iPC(.A(PC_in), .B(16'h0002), .Cin(1'b0), .S(inc_addr), .Cout(), .Ovfl());
-	cla_16bit iBR(.A(inc_addr), .B({6'h00, I_shift}), .Cin(1'b0), .S(branch_addr), .Cout(), .Ovfl());
-	
-	assign Z = F[0];
-	assign V = F[1];
-	assign N = F[2];
-	
-	assign willBranch = (C == 3'b000) ? Z == 1'b0 : // Not Equal
-						(C == 3'b001) ? Z == 1'b1 : // Equal
-						(C == 3'b010) ? {N, Z} == 2'b00 : // Greater Than
-						(C == 3'b011) ? N == 1'b1 : // Less Than
-						(C == 3'b100) ? (Z | ~|{N, Z}) : // Greater Than or Equal
-						(C == 3'b101) ? (Z | N) : // Less Than or Equal
-						(C == 3'b110) ? V : // Overflow
-						(C == 3'b111) ? 1'b1 : 1'b0; // Unconditional
-						
-	assign PC_Out = willBranch ? branch_addr : inc_addr;
+assign Z = F[0];
+assign N = F[1];
+assign V = F[2];
+
+assign condition_met =	(C == 3'b000) ? ~Z: // Not equal
+			(C == 3'b001) ? Z: // equal
+			(C == 3'b010) ? {N, Z} == 2'b00: // greater than
+			(C == 3'b011) ? N: // less than
+			(C == 3'b100) ? (Z | ((~Z) & (~N))): // Greater Than or Equal
+			(C == 3'b101) ? (N | Z): // less than or equals to
+			(C == 3'b110) ? V: // overflow
+			(C == 3'b111) ? 1'b1: 1'b0; // unconditional
+
+wire [15:0]branch_address, PC_plus_imm, next_address, PC_plus2;
+
+cla_16bit adder1(.A(PC_control_in), .B(16'h2), .Cin(1'b0), .S(PC_plus2), .Cout(), .Ovfl());
+cla_16bit adder2(.A(PC_plus2), .B({{6{I[8]}},{I[8:0]}, 1'b0}), .Cin(1'b0), .S(PC_plus_imm), .Cout(), .Ovfl());
+
+// @ branch_type, 0 for B, 1 for Br
+assign branch_taken = branch_ins & condition_met;
+assign branch_address = branch_type? reg2_data : PC_plus_imm; 
+assign next_address = branch_taken ? branch_address : PC_plus2;
+assign PC_control_out = (halt | stall) ? PC_control_in: next_address;
 
 endmodule
