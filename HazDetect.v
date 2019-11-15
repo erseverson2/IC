@@ -24,8 +24,8 @@ module hazDetect(memRead_DX, memRead_XM, registerRd_DX, registerRs_FD, registerR
 	
 	assign stall = (memRead_DX & regRd & (regRD_RS | (regRD_RT & notMemWrite))) // load-to-use
 			| (BranchIns & (// branch?
-				(~BranchType & Flags_Set) // Branch immediate (not reg dependent)
-				| (BranchType & (regRD_RS | (regRD_RS_MEM))) // Branch register (reg dependent)
+				(~BranchType & Flags_Set & regRd) // Branch immediate B (not reg dependent)
+				| (BranchType & (regRD_RS | (regRD_RS_MEM))) // Branch register BR (reg dependent)
 			));
 
 endmodule
