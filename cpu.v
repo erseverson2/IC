@@ -29,7 +29,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	// Register and ALU , and PC wires
 	wire [15:0] reg_wrt_data;
 	wire [15:0] reg_data1_to_IDEX, reg_data1_from_IDEX;
-	wire [15:0] ALU_In1, ALU_In2, RegFile_SrcData2, ALU_Out, ALU_mux_out, loaded_byte;
+	wire [15:0] ALU_In1, ALU_In2, ALU_Out, ALU_mux_out, loaded_byte;
 	wire [15:0] PC_out_to_IFID, PC_out_from_IFID;
 	wire [15:0] PC_in;
 
@@ -168,6 +168,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	assign Halt = &opcode;
 
 	// LBIns, 1 if opcode is LoadBype instruction, 0 otherwise
+	// Also doubles as ALU instruction checker
 	assign LBIns = opcode[3];
 
 	// PCtoReg, 1 if want to write PC to dstReg
@@ -239,6 +240,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
 	.nop(stall),
+	//.nop_IDEX(go),
 	.reg_data1_to_IDEX(reg_data1_to_IDEX),
 	.reg_data2_to_IDEX(reg_data2_to_IDEX),
 	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
@@ -304,11 +306,15 @@ module cpu(clk, rst_n, hlt, pc_out);
 	assign X2X_2 = ALU_src2_fwd[1];
 	assign M2X_2 = ALU_src2_fwd[0];
 
+	wire [15:0] imm_unshifted, imm_shifted;
+	assign imm_unshifted = {{12{LLB_LHB_from_IDEX[3]}}, LLB_LHB_from_IDEX[3:0]};
+	assign {junk, imm_shifted} = {imm_unshifted, 1'b0};
+
 	// ALUSrc_EX controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
 	// Also uses forwarded data if necessary
 	assign ALU_In1 = X2X_1 ? ALU_mux_out_MEM : (M2X_1 ? reg_wrt_data : reg_data1_from_IDEX);
 	assign ALU_In2 = X2X_2 ? ALU_mux_out_MEM : (M2X_2 ? reg_wrt_data : 
-						(ALUSrc_EX ? {{11{imem_data_out_from_IFID[3]}}, imem_data_out_from_IFID[3:0], 1'b0}: reg_data2_from_IDEX));
+						(ALUSrc_EX ? ((|Control_EX_to_MEM) ? imm_shifted : imm_unshifted): reg_data2_from_IDEX));
 
 	wire Flags_Set;
 
@@ -419,6 +425,7 @@ hazDetect iHaz(
 	.Flags_Set(Flags_Set),
 	.BranchIns(BranchIns),
 	.BranchType(BranchType),
+	//.go(go),
 	.stall(stall));
 	
 endmodule
