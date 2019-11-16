@@ -10,3 +10,5 @@
 P1 - Single Cycle
 
 P2 - Pipelined
+
+P3 - Caches
