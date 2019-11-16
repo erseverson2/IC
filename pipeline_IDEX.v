@@ -11,6 +11,7 @@ module pipeline_IDEX(
 	input MemtoReg, 
 	input MemWrite,
 	input MemRead, 
+	input Reg2Src,
 	//input BranchType, 
 	//input BranchIns, 
 	input Halt, 
@@ -23,7 +24,8 @@ module pipeline_IDEX(
 	input [3:0] SrcReg2_in_to_IDEX,
 	input [3:0] DstReg1_in_to_IDEX,
 	input [3:0] LLB_LHB_to_IDEX,
-	output nop_IDEX,
+	//output nop_IDEX,
+	output Reg2Src_EX,
 	output [4:0]to_EXReg,
 	output [1:0] to_Mem,
 	output [3:0] to_WBReg,
@@ -46,7 +48,8 @@ module pipeline_IDEX(
 	wire [3:0] loadByte1;
 
 	// nop forwarding (allows for one-cycle stall)
-	dff iNOP(.q(nop_IDEX), .d(nop), .wen(1'b1), .clk(clk), .rst(rst));
+	//dff iNOP(.q(nop_IDEX), .d(nop), .wen(1'b1), .clk(clk), .rst(rst));
+	dff iReg2Src(.q(Reg2Src_EX), .d((nop ? 1'b0 : Reg2Src)), .wen(1'b1), .clk(clk), .rst(rst));
 
 	// @ EX
 	assign EXReg = nop ? 5'h00 : {ALU_Opcode, ALUSrc, LBIns};

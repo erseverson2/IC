@@ -1,0 +1,17 @@
+End of file ALU.v. Hash = 835703166
+End of file Bit16Reg.v. Hash = -2140203814
+End of file Bit2Reg.v. Hash = 914474066
+End of file Bit3Reg.v. Hash = -671893419
+End of file Bit4Reg.v. Hash = 1695547189
+End of file Bit5Reg.v. Hash = -1693900864
+End of file CLA.v. Hash = 1846637802
+End of file cpu.v. Hash = 702863660
+End of file FlagRegister.v. Hash = -1629406721
+End of file forwarding_unit.v. Hash = 249611638
+End of file HazDetect.v. Hash = 1590982228
+End of file PC_control.v. Hash = -1158974194
+End of file PC.v. Hash = 678403440
+End of file pipeline_EXMEM.v. Hash = 178598531
+End of file pipeline_IDEX.v. Hash = -1314804484
+End of file pipeline_IFID.v. Hash = -1562515352
+End of file pipeline_MEMWB.v. Hash = -488733684

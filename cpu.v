@@ -2,14 +2,7 @@
    Group: Memory Loss
    Last Modified: Nov. 13, 2019 */
 
-//******* FINISH ALL TODO'S before turning in *******//
-// x) Stall also when BR needs result of LW (implemented)
-// 2) Look at TODO in forwarding_unit.v
-// 3) Do we still need PC forwarding in IFID?
-// x) Does RF bypassing work? (implemented)
-// 5) Run Vcheck.java on all files
-// 6) Copy to new project and resimulate WITHOUT .v.bak files
-// 7) Turn in all .log and .trace files
+// TODO: Eventually remove ALU_In2_MEM
 
 module cpu(clk, rst_n, hlt, pc_out);
 
@@ -67,7 +60,11 @@ module cpu(clk, rst_n, hlt, pc_out);
 
 	/////////////// PC and PC control ////////////
 	wire[2:0] FLAGS, FLAGS_MEM;
-	wire Halt_WB;
+	wire Halt_WB, branch_taken;
+	wire[15:0] reg_data2_from_IDEX;
+
+	// Halt
+	assign Halt = &imem_data_out_to_IFID[15 : 12] & ~branch_taken;
 
 	PC iPC(
 	.clk(clk),
@@ -77,11 +74,11 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.PC_out(PC_out_to_IFID));
 
 	PC_control iPC_control(
-	.C(imem_data_out_to_IFID[11:9]), 
-	.I(imem_data_out_to_IFID[8:0]),
+	.C(imem_data_out_from_IFID[11:9]), 
+	.I(imem_data_out_from_IFID[8:0]),
 	.F(FLAGS_MEM),
 	.PC_control_in(PC_out_to_IFID),
-	.reg2_data(reg_data1_to_IDEX),// TODO: verify
+	.reg2_data(reg_data1_to_IDEX),// one not two (not a typo)
 	.branch_type(BranchType),
 	.halt(Halt),
 	.stall(stall),
@@ -102,6 +99,8 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.rst(rst_reg),
 	.stall(stall),
 	.flush(branch_taken),
+	.Halt(Halt),
+	.Halt_ID(Halt_ID),
 	.PC_out_to_IFID(PC_out_to_IFID),
 	.PC_out_from_IFID(PC_out_from_IFID),
 	.imem_data_out_to_IFID(imem_data_out_to_IFID),
@@ -113,11 +112,11 @@ module cpu(clk, rst_n, hlt, pc_out);
 
 	//////////////////////////////////////////////
 	// ID:
-	// @ Reg2Src
 	// 
 	// EX:
 	// @ ALUSrc
 	// @ LBIns
+	// @ Reg2Src
 	//
 	// MEM:
 	// @ MemWrite
@@ -164,12 +163,8 @@ module cpu(clk, rst_n, hlt, pc_out);
 	// MemRead determines if current instruction is a load
 	assign MemRead = opcode[3]&~opcode[2]&~opcode[1]&~opcode[0];
 
-	// Halt
-	assign Halt = &opcode;
-
 	// LBIns, 1 if opcode is LoadBype instruction, 0 otherwise
-	// Also doubles as ALU instruction checker
-	assign LBIns = opcode[3];
+	assign LBIns = opcode[3] & ~opcode[2] & opcode[1];
 
 	// PCtoReg, 1 if want to write PC to dstReg
 	assign PCtoReg = opcode[3]&opcode[2]&opcode[1]&~opcode[0];
@@ -184,7 +179,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	// @ imem_data_out_from_IFID[11:8]
 
 	wire[15:0] dmem_data_out;
-	wire[15:0] reg_data2_to_IDEX, reg_data2_from_IDEX;
+	wire[15:0] reg_data2_to_IDEX;
 	wire[3:0] DstReg1_in_to_IDEX, DstReg1_in_from_IDEX;
 	wire[3:0] LLB_LHB_to_IDEX, LLB_LHB_from_IDEX;
 	wire[3:0] SrcReg1_in_to_IDEX, SrcReg1_in_from_IDEX;
@@ -219,7 +214,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 /////////////// ID/EX ///////////////////////////
 
 	wire [2:0] ALU_Opcode_EX;
-	wire ALUSrc_EX, LBIns_EX;
+	wire ALUSrc_EX, LBIns_EX, Reg2Src_EX;
 	wire [1:0] Control_EX_to_MEM;
 	wire [3:0] Control_EX_to_WB;
 	//wire go; // The forwarded stall signal
@@ -233,10 +228,12 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.ALU_Opcode(ALU_Opcode),
 	.ALUSrc(ALUSrc),
 	.RegWrite(RegWrite),
+	.Reg2Src(Reg2Src),
+	.Reg2Src_EX(Reg2Src_EX),
 	.MemtoReg(MemtoReg),
 	.MemWrite(MemWrite),
 	.MemRead(MemRead),
-	.Halt(Halt),
+	.Halt(Halt_ID),
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
 	.nop(stall),
@@ -307,6 +304,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	assign M2X_2 = ALU_src2_fwd[0];
 
 	wire [15:0] imm_unshifted, imm_shifted;
+	wire [15:0] ALU_data;
 	assign imm_unshifted = {{12{LLB_LHB_from_IDEX[3]}}, LLB_LHB_from_IDEX[3:0]};
 	assign {junk, imm_shifted} = {imm_unshifted, 1'b0};
 
@@ -315,6 +313,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	assign ALU_In1 = X2X_1 ? ALU_mux_out_MEM : (M2X_1 ? reg_wrt_data : reg_data1_from_IDEX);
 	assign ALU_In2 = X2X_2 ? ALU_mux_out_MEM : (M2X_2 ? reg_wrt_data : 
 						(ALUSrc_EX ? ((|Control_EX_to_MEM) ? imm_shifted : imm_unshifted): reg_data2_from_IDEX));
+	assign ALU_data = X2X_2 ? ALU_mux_out_MEM : (M2X_2 ? reg_wrt_data : reg_data2_from_IDEX);
 
 	wire Flags_Set;
 
@@ -323,6 +322,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.ALU_In1(ALU_In1),
 	.ALU_In2(ALU_In2),
 	.Opcode(ALU_Opcode_EX),
+	.isALU(~Reg2Src_EX),
 	.Flags(FLAGS),
 	.Flags_Set(Flags_Set));
 
@@ -331,9 +331,9 @@ module cpu(clk, rst_n, hlt, pc_out);
 /////////////// EX/MEM ///////////////////////////
 
 	wire MemWrite_MEM, MemRead_MEM;
-	wire[15:0] ALU_In2_MEM;
+	wire[15:0] ALU_In2_MEM, ALU_data_MEM;
 	wire[3:0] Control_MEM_to_WB;
-	wire[3:0] DstReg1_in_from_EXMEM, SrcReg1_in_from_EXMEM;
+	wire[3:0] DstReg1_in_from_EXMEM, SrcReg2_in_from_EXMEM;
 
 	// FLAGS register is built into pipeline
 	pipeline_EXMEM iPipe_EXMEM(
@@ -344,8 +344,10 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.flagsIn(FLAGS),
 	.reg_data_in(ALU_mux_out),
 	.rt_in(ALU_In2),
+	.ALU_data_in(ALU_data),
+	.ALU_data_out(ALU_data_MEM),
 	.DstReg_in(DstReg1_in_from_IDEX),
-	.SrcReg1_in(SrcReg1_in_from_IDEX),
+	.SrcReg2_in(SrcReg2_in_from_IDEX),
 	.MemWrite(MemWrite_MEM),
 	.MemRead(MemRead_MEM),
 	.flagsOut(FLAGS_MEM),
@@ -353,7 +355,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.reg_data_out(ALU_mux_out_MEM),
 	.rt_out(ALU_In2_MEM),
 	.DstReg_out(DstReg1_in_from_EXMEM),
-	.SrcReg1_out(SrcReg1_in_from_EXMEM));
+	.SrcReg2_out(SrcReg2_in_from_EXMEM));
 
 /////////////// MEMORY (MEM) /////////////////////////
 
@@ -371,7 +373,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.clk(clk),
 	.rst(rst_reg));
 
-	assign dmem_data_in = DMEM_fwd ? dmem_data_out_WB : ALU_In2_MEM;// TODO: should this be reg_wrt_data instead?
+	assign dmem_data_in = DMEM_fwd ? dmem_data_out_WB : ALU_data_MEM;
 	assign dmem_addr = ALU_mux_out_MEM;
 	assign dmem_wr = MemWrite_MEM;
 	/////////////// D-MEM END////////////////////////
@@ -404,12 +406,13 @@ forwarding_unit iFWD(
 	.RegWrite_EXMEM(Control_MEM_to_WB[3]),
 	.RegWrite_MEMWB(RegWrite_MEMWB),
 	.MemWrite_MEM(MemWrite_MEM),
-	.SrcReg1_in_from_EXMEM(SrcReg1_in_from_EXMEM),
+	.SrcReg2_in_from_EXMEM(SrcReg2_in_from_EXMEM),
 	.DstReg1_in_from_EXMEM(DstReg1_in_from_EXMEM),
 	.DstReg1_in_from_MEMWB(DstReg1_in_from_MEMWB),
 	.SrcReg1_in_from_IDEX(SrcReg1_in_from_IDEX),
 	.SrcReg2_in_from_IDEX(SrcReg2_in_from_IDEX),
 	.DstReg1_in_from_IDEX(DstReg1_in_from_IDEX),
+	.MemRead_MEM(MemRead_MEM),
 	.DMEM_fwd(DMEM_fwd));
 
 /////////////// STALLS ///////////////////////////

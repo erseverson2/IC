@@ -159,7 +159,7 @@ module MemoryLossTestbench();
    assign MemAddress = DUT.ALU_mux_out_MEM;
    // If there's a memory access this cycle, this should hold the address to access memory with (for both reads and writes to memory, 16 bits)
    
-   assign MemDataIn = DUT.ALU_In2_MEM;
+   assign MemDataIn = DUT.dmem_data_in;
    // If there's a memory write in this cycle, this is the Data being written to memory (16 bits)
    
    assign MemDataOut = DUT.dmem_data_out;

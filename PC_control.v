@@ -1,6 +1,6 @@
 /* Class: ECE 552-1
    Group: Memory Loss
-   Last Modified: Nov. 8, 2019 */
+   Last Modified: Nov. 15, 2019 */
    
 module PC_control(
 input [2:0]C, 
@@ -34,7 +34,7 @@ cla_16bit adder1(.A(PC_control_in), .B(16'h2), .Cin(1'b0), .S(PC_plus2), .Cout()
 cla_16bit adder2(.A(PC_plus2), .B({{6{I[8]}},{I[8:0]}, 1'b0}), .Cin(1'b0), .S(PC_plus_imm), .Cout(), .Ovfl());
 
 // @ branch_type, 0 for B, 1 for Br
-assign branch_taken = branch_ins & condition_met;
+assign branch_taken = branch_ins & condition_met & ~stall;
 assign branch_address = branch_type? reg2_data : PC_plus_imm; 
 assign next_address = branch_taken ? branch_address : PC_plus2;
 assign PC_control_out = (halt | stall) ? PC_control_in: next_address;
