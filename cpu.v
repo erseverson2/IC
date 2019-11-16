@@ -2,17 +2,7 @@
    Group: Memory Loss
    Last Modified: Nov. 13, 2019 */
 
-//******* FINISH ALL TODO'S before turning in *******//
-// x) Stall also when BR needs result of LW (implemented)
-// x) Look at TODO in forwarding_unit.v
-// x) Do we still need PC forwarding in IFID?
-// x) Does RF bypassing work? (implemented)
-// 5) Run Vcheck.java on all files
-// 6) Copy to new project and resimulate WITHOUT .v.bak files
-// 7) Turn in all .log and .trace files
-// 8) Turn in control ignals.ods
-// 9) Try corner cases
-// 10) Remove ALU_In2_MEM
+// TODO: Eventually remove ALU_In2_MEM
 
 module cpu(clk, rst_n, hlt, pc_out);
 
@@ -71,6 +61,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	/////////////// PC and PC control ////////////
 	wire[2:0] FLAGS, FLAGS_MEM;
 	wire Halt_WB, branch_taken;
+	wire[15:0] reg_data2_from_IDEX;
 
 	// Halt
 	assign Halt = &imem_data_out_to_IFID[15 : 12] & ~branch_taken;
@@ -188,7 +179,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	// @ imem_data_out_from_IFID[11:8]
 
 	wire[15:0] dmem_data_out;
-	wire[15:0] reg_data2_to_IDEX, reg_data2_from_IDEX;
+	wire[15:0] reg_data2_to_IDEX;
 	wire[3:0] DstReg1_in_to_IDEX, DstReg1_in_from_IDEX;
 	wire[3:0] LLB_LHB_to_IDEX, LLB_LHB_from_IDEX;
 	wire[3:0] SrcReg1_in_to_IDEX, SrcReg1_in_from_IDEX;
