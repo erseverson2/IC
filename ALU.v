@@ -9,10 +9,10 @@ module ALU(ALU_Out, ALU_In1, ALU_In2, Opcode, Flags, Flags_Set, isALU);
 	output[15:0] ALU_Out;
 	output[2:0] Flags;
 	output Flags_Set;
-	wire V, N, Z;
-	assign Flags[0] = Z;
-	assign Flags[1] = N;
-	assign Flags[2] = V;
+	wire Z, V, N;
+	assign Flags[2] = Z;
+	assign Flags[1] = V;
+	assign Flags[0] = N;
 	
 	wire sub, Ovfl, Sign;
 	assign sub = Opcode[0];
