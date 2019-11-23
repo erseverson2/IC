@@ -350,6 +350,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.SrcReg2_in(SrcReg2_in_from_IDEX),
 	.MemWrite(MemWrite_MEM),
 	.MemRead(MemRead_MEM),
+	.Flags_Set(Flags_Set),
 	.flagsOut(FLAGS_MEM),
 	.to_WBReg(Control_MEM_to_WB),
 	.reg_data_out(ALU_mux_out_MEM),
