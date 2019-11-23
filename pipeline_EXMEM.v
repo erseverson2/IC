@@ -1,7 +1,8 @@
-module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, reg_data_in, rt_in, DstReg_in, SrcReg2_in, MemWrite, MemRead, flagsOut, to_WBReg, reg_data_out, rt_out, DstReg_out, SrcReg2_out, ALU_data_in, ALU_data_out);
+module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, Flags_Set, reg_data_in, rt_in, DstReg_in, SrcReg2_in, MemWrite, MemRead, flagsOut, to_WBReg, reg_data_out, rt_out, DstReg_out, SrcReg2_out, ALU_data_in, ALU_data_out);
 
 	input clk;
 	input rst;
+	input Flags_Set;
 	input [3:0] WB;
 	input [1:0] mem;
 	input [2:0] flagsIn;
@@ -35,7 +36,7 @@ module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, reg_data_in, rt_in, DstReg_in,
 	// Mem2Mem FWD reg
 	Bit4Reg FWD_src_ExMem(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(SrcReg2_in), .reg_out(SrcReg2_out));
 	// flags reg
-	Bit3Reg flags(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(flagsIn), .reg_out(flagsOut));
+	Bit3Reg flags(.clk(clk), .rst(rst), .write_en(Flags_Set), .reg_in(flagsIn), .reg_out(flagsOut));
 	// MEM:
 	// @ MemWrite
 	//
