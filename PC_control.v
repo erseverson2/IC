@@ -15,9 +15,9 @@ input branch_ins,
 output [15:0]PC_control_out,
 output branch_taken);
 
-assign Z = F[0];
-assign N = F[1];
-assign V = F[2];
+assign Z = F[2];
+assign V = F[1];
+assign N = F[0];
 
 assign condition_met =	(C == 3'b000) ? ~Z: // Not equal
 			(C == 3'b001) ? Z: // equal
