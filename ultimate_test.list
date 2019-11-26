@@ -1,0 +1,57 @@
+b1: LLB R1, 0X15
+b2: LHB R1, 0X15
+b3: LLB R2, 0X26
+b4: LHB R2, 0X26
+  #############################
+  # Test all ALU instructions #
+  # and EX-EX forwarding      #
+  #############################
+b5: ADD R3, R1, R2
+b6: SUB R3, R1, R2
+  XOR R3, R1, R2
+  PADDSB R3, R1, R2
+  RED R3, R1, R2
+  SLL R3, R1, R2
+  SRA R3, R1, R2
+  ROR R3, R1, R2
+  #########################
+  # Test loads and stores #
+  #########################
+  SW R3, R2, 4
+  LW R4, R2, 4
+  ###########################
+  # Test MEM-EX and MEM-MEM #
+  # forwarding              #
+  ###########################
+  # MEM-MEM
+  SW R3, R4, 0
+  LW R6, R4, 0
+  # MEM-EX
+  LLB R8, 0X00
+  ADD R7, R6, R6
+  # Load-to-use stalls
+  LW R9, R4, 0
+  ADD R9, R9, R9
+  ############
+  # Test PCS #
+  ############
+  PCS R5
+  #################
+  # Test branches #
+  #################
+	LLB R6, 0x20
+  LHB R6, 0x00
+	B 001, b1
+  B 010, b2
+  B 011, b3
+  B 100, b4
+  B 101, b5
+  B 110, b6
+  B 111, b7
+  HLT
+b7:	ADD R4, R6, R2
+	BR 001, R4
+  BR 010, R5
+  BR 100, R6
+  BR 111, R7
+	HLT
