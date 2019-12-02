@@ -14,19 +14,19 @@ input miss_detected;
 input [15:0] miss_address;
 
 // asserted while FSM is busy handling the miss (can be used as pipeline stall signal)
-output reg fsm_busy;
+output reg fsm_busy = 1'b0;
 
 // write enable to cache data array to signal when filling with memory_data
-output reg write_data_array;
+output reg write_data_array = 1'b0;
 
 // write enable to cache tag array to signal when all words are filled in to data array
-output reg write_tag_array;
+output reg write_tag_array = 1'b0;
 
 // address to read from memory
-output reg [15:0] memory_address;
+output reg [15:0] memory_address = 16'h0000;
 
 // block to store to cache
-output reg [2:0] block_num;
+output reg [2:0] block_num = 3'b000;
 
 // data returned by memory (after  delay)
 //input [15:0] memory_data;
@@ -41,7 +41,7 @@ input waitForICACHE;
 assign rst = ~rst_n;
 
 // store whether IDLE or WAITing
-reg nxt_state;
+reg nxt_state = 1'b0;
 wire state;
 dff iFSM(.q(state), .d(nxt_state), .wen(1'b1), .clk(clk), .rst(rst));
 
@@ -63,6 +63,7 @@ always @(*)
 				write_data_array = 1'b1;
 				write_tag_array = 1'b0;
 				memory_address = miss_address & 16'hFFE0 | 16'h0000;
+				block_num = 3'b000;
 			end
 		// Keep waiting until memory is free
 		8'b11_000001 :
@@ -75,46 +76,49 @@ always @(*)
 			begin
 				word_count_nxt = 5'b00010; //1 + 1 = 2
 				write_data_array = 1'b1;
-				memory_address = miss_address & 16'hFFE0 | 16'h0002;
+				memory_address = miss_address & 16'hFFF0 | 16'h0002;
+				block_num = 3'b000;
 			end
 		8'b11_00010? :
 			begin
 				word_count_nxt = 5'b00011; //2 + 1 = 3
 				write_data_array = 1'b1;
-				memory_address = miss_address & 16'hFFE0 | 16'h0004;
+				memory_address = miss_address & 16'hFFF0 | 16'h0004;
+				block_num = 3'b000;
 			end
 		8'b11_00011? :
 			begin
 				word_count_nxt = 5'b00100; //3 + 1 = 4
 				write_data_array = 1'b1;
-				memory_address = miss_address & 16'hFFE0 | 16'h0006;
+				memory_address = miss_address & 16'hFFF0 | 16'h0006;
+				block_num = 3'b000;
 			end
 		8'b11_00100? :
 			begin
 				word_count_nxt = 5'b00101; //4 + 1 = 5
 				write_data_array = 1'b1;
-				memory_address = miss_address & 16'hFFE0 | 16'h0008;
+				memory_address = miss_address & 16'hFFF0 | 16'h0008;
 				block_num = 3'b000;
 			end
 		8'b11_00101? :
 			begin
 				word_count_nxt = 5'b00110; //5 + 1 = 6
 				write_data_array = 1'b1;
-				memory_address = miss_address & 16'hFFE0 | 16'h000A;
+				memory_address = miss_address & 16'hFFF0 | 16'h000A;
 				block_num = 3'b001;
 			end
 		8'b11_00110? :
 			begin
 				word_count_nxt = 5'b00111; //6 + 1 = 7
 				write_data_array = 1'b1;
-				memory_address = miss_address & 16'hFFE0 | 16'h000C;
+				memory_address = miss_address & 16'hFFF0 | 16'h000C;
 				block_num = 3'b010;
 			end
 		8'b11_00111? :
 			begin
 				word_count_nxt = 5'b01000; //7 + 1 = 8
 				write_data_array = 1'b1;
-				memory_address = miss_address & 16'hFFE0 | 16'h000E;
+				memory_address = miss_address & 16'hFFF0 | 16'h000E;
 				block_num = 3'b011;
 			end
 		8'b11_01000? :
@@ -137,18 +141,30 @@ always @(*)
 			end
 		8'b11_01011? :
 			begin
-				word_count_nxt = 5'b10000; //11 + 1 = 12
+				word_count_nxt = 5'b01100; //11 + 1 = 12
 				write_data_array = 1'b1;
-				//write_tag_array = 1'b1;
+				write_tag_array = 1'b1;
 				block_num = 3'b111;
 			end
+		8'b11_01100? :
+			begin
+				word_count_nxt = 5'b10000; //11 + 1 = 12
+				write_data_array = 1'b0;
+				write_tag_array = 1'b0;
+			end
+		8'b1?_10000? :
+			begin
+				word_count_nxt = 5'b00000; // start over
+				write_data_array = 1'b0;
+				write_tag_array = 1'b0;
+			end
 		// finalize by sending tag array bit
-		8'b11_10000? :
+		/*8'b11_10000? :
 			begin
 				word_count_nxt = 5'b00000; // start over
 				write_data_array = 1'b0;
 				write_tag_array = 1'b1;
-			end
+			end*/
 		// do not increment
 		8'b10_?????? :
 			begin
@@ -170,13 +186,6 @@ Bit5Reg iCount(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(word_count_nxt), .
 // 1 : WAIT
 always @(*)
 	casez ({state, miss_detected, word_count_nxt[4]})
-		// initialization case
-		3'b0x? :
-			begin
-				nxt_state = 1'b1; // Stay in IDLE until cache miss
-				fsm_busy = 1'b1; // Not handling a miss
-				memory_address = miss_address;
-			end
 		// IDLE and no cache miss
 		3'b00? :
 			begin
