@@ -1,7 +1,8 @@
 /* Class: ECE 552-1
    Group: Memory Loss
    Last Modified: Nov. 15, 2019 */
-   
+
+// Order of Flags: {Z, V, N}
 module PC_control(
 input [2:0]C, 
 input [8:0]I, 
