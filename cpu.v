@@ -426,9 +426,9 @@ wire mcm_data_valid;
 memory4c MCMEM(
 	.data_out(mcm_data_out),
 	.data_in(dmem_data_in),
-	.addr(ICACHE_read_addr),//ISTALL ? ICACHE_read_addr : DCACHE_read_addr),
-	.enable(ISTALL),// | DSTALL),
-	.wr(MemWrite_MEM & ~ISTALL),// & ~DSTALL),
+	.addr(ISTALL ? ICACHE_read_addr : DCACHE_read_addr),
+	.enable(ISTALL | DSTALL),
+	.wr(MemWrite_MEM & ~ISTALL & ~DSTALL),
 	.clk(clk),
 	.rst(rst_reg),
 	.data_valid(mcm_data_valid));
@@ -455,25 +455,25 @@ cache ICACHE(
 	.waitForICACHE(1'b0));
 
 
-memory1c DMEM(
+/*memory1c DMEM(
 	.data_out(dmem_data_out),
 	.data_in(dmem_data_in),
 	.addr(dmem_addr),
 	.enable(MemWrite_MEM | MemRead_MEM),
 	.wr(dmem_wr),
 	.clk(clk),
-	.rst(rst_reg));
+	.rst(rst_reg));*/
 
-/*cache DCACHE(
+cache DCACHE(
 	.clk(clk),
 	.rst(rst_reg),
 	.cacheAddress(dmem_addr),
 	.cacheDataOut(dmem_data_out),
 	.cacheDataIn(dmem_data_in),
-	.writeEnable(DSTALL & (MemWrite_MEM | MemRead_MEM)),
+	.writeEnable(DSTALL & MemWrite_MEM),
 	.memory_data_valid(mcm_data_valid),
 	.cache_stall(DSTALL),
 	.memory_address(DCACHE_read_addr),
-	.waitForICACHE(ISTALL));*/
+	.waitForICACHE(ISTALL));
 	
 endmodule

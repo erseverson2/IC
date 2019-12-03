@@ -70,6 +70,8 @@ always @(*)
 			begin
 				word_count_nxt = 5'b00000;
 				write_data_array = 1'b0;
+				write_tag_array = 1'b0;
+				block_num = 3'b000;
 			end
 		// All clear, so proceed
 		8'b11_00001? :
