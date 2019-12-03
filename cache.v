@@ -28,7 +28,7 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	Dec7to128 iData_block1(.data(odd_addr), .dec(decode_set_data1));
 	Dec3to8 iData_word1(.data(cacheAddress[3:1]), .dec(decode_offset_data1), .wen(1'b1));
 
-	wire LRU0 = 1'b1;
+	wire LRU0;
 	wire [7:0] block_num_dec;
 	wire [7:0] data0_word = cache_stall ? block_num_dec : decode_offset_data0;
 
@@ -36,7 +36,7 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	.clk(clk),
 	.rst(rst),
 	.DataIn(cacheDataIn),
-	.Write(write_data_array & writeEnable), //& LRU0 & writeEnable),
+	.Write(write_data_array & LRU0 & writeEnable),
 	.BlockEnable(decode_set_data0),
 	.WordEnable(data0_word),
 	.DataOut(arrayDataOut1));
@@ -47,7 +47,7 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	.clk(clk),
 	.rst(rst),
 	.DataIn(cacheDataIn),
-	.Write(write_data_array & writeEnable),//~LRU0 & writeEnable),
+	.Write(write_data_array & ~LRU0 & writeEnable),
 	.BlockEnable(decode_set_data1),
 	.WordEnable(cache_stall ? block_num : decode_offset_data1),
 	.DataOut(arrayDataOut2));
@@ -75,20 +75,20 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	MetaDataArray IMetaDataArray0(
 	.clk(clk),
 	.rst(rst),
-	.DataIn({2'b11, cacheAddress[15:10]}),//{1'b1, LRU0, cacheAddress[15:10]}),
-	.Write(write_tag_array & writeEnable),// & LRU0 & writeEnable),
+	.DataIn({1'b1, LRU0, cacheAddress[15:10]}),
+	.Write(write_tag_array & LRU0 & writeEnable),
 	.BlockEnable(decode_set_meta0),
 	.DataOut(tagValid0));
 
 	MetaDataArray IMetaDataArray1(
 	.clk(clk),
 	.rst(rst),
-	.DataIn({2'b11, cacheAddress[15:10]}),//{1'b1, ~LRU0, cacheAddress[15:10]}),
-	.Write(write_tag_array & writeEnable),// & ~LRU0 & writeEnable),
+	.DataIn({1'b1, ~LRU0, cacheAddress[15:10]}),
+	.Write(write_tag_array & ~LRU0 & writeEnable),
 	.BlockEnable(decode_set_meta1),
 	.DataOut(tagValid1));
 
-	//dff iLRU(.q(LRU0), .d(data1Hit ? 1'b0 : data2Hit ? 1'b1 : ~tagValid0[6]), .wen(~write_tag_array), .clk(clk), .rst(rst));
+	dff iLRU(.q(LRU0), .d(data1Hit ? 1'b0 : data2Hit ? 1'b1 : ~tagValid0[6]), .wen(~write_tag_array), .clk(clk), .rst(rst));
 
 	assign data1Hit = tagValid0[7] & (tagValid0[5:0] == cacheAddress[15:10]);
 	assign data2Hit = tagValid1[7] & (tagValid1[5:0] == cacheAddress[15:10]);

@@ -62,7 +62,7 @@ always @(*)
 				word_count_nxt = 5'b00001; //0 + 1 = 1
 				write_data_array = 1'b1;
 				write_tag_array = 1'b0;
-				memory_address = miss_address & 16'hFFE0 | 16'h0000;
+				memory_address = miss_address & 16'hFFF0 | 16'h0000;
 				block_num = 3'b000;
 			end
 		// Keep waiting until memory is free
