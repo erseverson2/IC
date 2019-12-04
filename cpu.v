@@ -74,7 +74,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.reg2_data(reg_data1_to_IDEX),// one not two (not a typo)
 	.branch_type(BranchType),
 	.halt(Halt),
-	.stall(stall | ISTALL),// | DSTALL),
+	.stall(stall | ISTALL | DSTALL),
 	.branch_taken(branch_taken),
 	.branch_ins(BranchIns),
 	.PC_control_out(PC_in)
@@ -229,7 +229,8 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.Halt(Halt_ID),
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
-	.nop(stall),// | DSTALL),
+	.nop(stall),
+	.stall(DSTALL),
 	.reg_data1_to_IDEX(reg_data1_to_IDEX),
 	.reg_data2_to_IDEX(reg_data2_to_IDEX),
 	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
@@ -343,7 +344,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.MemWrite(MemWrite_MEM),
 	.MemRead(MemRead_MEM),
 	.Flags_Set(Flags_Set),
-	.stall(1'b0),//DSTALL),
+	.stall(DSTALL),
 	.flagsOut(FLAGS_MEM),
 	.to_WBReg(Control_MEM_to_WB),
 	.reg_data_out(ALU_mux_out_MEM),
@@ -428,7 +429,7 @@ memory4c MCMEM(
 	.data_in(dmem_data_in),
 	.addr(ISTALL ? ICACHE_read_addr : DCACHE_read_addr),
 	.enable(ISTALL | DSTALL),
-	.wr(MemWrite_MEM & ~ISTALL & ~DSTALL),
+	.wr(MemWrite_MEM & ~ISTALL & ~DCACHE_miss),
 	.clk(clk),
 	.rst(rst_reg),
 	.data_valid(mcm_data_valid));
@@ -448,11 +449,12 @@ cache ICACHE(
 	.cacheAddress(PC_out_to_IFID),
 	.cacheDataOut(imem_data_out_to_IFID),
 	.cacheDataIn(mcm_data_out),
-	.writeEnable(ISTALL),
+	.writeEnable(1'b0),//ISTALL),
 	.memory_data_valid(mcm_data_valid),
 	.cache_stall(ISTALL),
 	.memory_address(ICACHE_read_addr),
-	.waitForICACHE(1'b0));
+	.waitForICACHE(1'b0),
+	.miss_detected());
 
 
 /*memory1c DMEM(
@@ -464,16 +466,19 @@ cache ICACHE(
 	.clk(clk),
 	.rst(rst_reg));*/
 
+wire [15:0] DCACHE_addr = (MemWrite_MEM | MemRead_MEM) ? dmem_addr : 16'h0000;
+
 cache DCACHE(
 	.clk(clk),
 	.rst(rst_reg),
-	.cacheAddress(dmem_addr),
+	.cacheAddress(DCACHE_addr),
 	.cacheDataOut(dmem_data_out),
 	.cacheDataIn(dmem_data_in),
-	.writeEnable(DSTALL & MemWrite_MEM),
+	.writeEnable(MemWrite_MEM),
 	.memory_data_valid(mcm_data_valid),
 	.cache_stall(DSTALL),
 	.memory_address(DCACHE_read_addr),
-	.waitForICACHE(ISTALL));
+	.waitForICACHE(ISTALL),
+	.miss_detected(DCACHE_miss));
 	
 endmodule
