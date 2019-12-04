@@ -1,4 +1,4 @@
-module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, memory_data_valid, cache_stall, memory_address, waitForICACHE);
+module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, memory_data_valid, cache_stall, memory_address, waitForICACHE, miss_detected);
 	input clk, rst, writeEnable;
 	input [15:0] cacheAddress; // address of data
 	input [15:0] cacheDataIn; // Data into cache
@@ -7,6 +7,7 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	output [15:0] cacheDataOut; // Data read from cache
 	output cache_stall; // stall if FSM busy
 	output [15:0] memory_address; // sequential memory address to read
+	output miss_detected;
 
 	wire [127:0] decode_set_data0, decode_set_data1;
 	wire [7:0] decode_offset_data0, decode_offset_data1;
@@ -36,7 +37,7 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	.clk(clk),
 	.rst(rst),
 	.DataIn(cacheDataIn),
-	.Write(write_data_array & LRU0 & writeEnable),
+	.Write((write_data_array & LRU0 & cache_stall) | writeEnable),
 	.BlockEnable(decode_set_data0),
 	.WordEnable(data0_word),
 	.DataOut(arrayDataOut1));
@@ -47,7 +48,7 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	.clk(clk),
 	.rst(rst),
 	.DataIn(cacheDataIn),
-	.Write(write_data_array & ~LRU0 & writeEnable),
+	.Write((write_data_array & ~LRU0 & cache_stall) | writeEnable),
 	.BlockEnable(decode_set_data1),
 	.WordEnable(cache_stall ? block_num : decode_offset_data1),
 	.DataOut(arrayDataOut2));
@@ -76,7 +77,7 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	.clk(clk),
 	.rst(rst),
 	.DataIn({1'b1, LRU0, cacheAddress[15:10]}),
-	.Write(write_tag_array & LRU0 & writeEnable),
+	.Write((write_tag_array & cache_stall) | writeEnable),
 	.BlockEnable(decode_set_meta0),
 	.DataOut(tagValid0));
 
@@ -84,7 +85,7 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	.clk(clk),
 	.rst(rst),
 	.DataIn({1'b1, ~LRU0, cacheAddress[15:10]}),
-	.Write(write_tag_array & ~LRU0 & writeEnable),
+	.Write((write_tag_array & cache_stall) | writeEnable),
 	.BlockEnable(decode_set_meta1),
 	.DataOut(tagValid1));
 
