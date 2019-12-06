@@ -77,7 +77,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.reg2_data(reg_data1_to_IDEX),// one not two (not a typo)
 	.branch_type(BranchType),
 	.halt(Halt),
-	.stall(stall | ISTALL | DSTALL),
+	.stall(stall_br | stall_mem | ISTALL | DSTALL),
 	.branch_taken(branch_taken),
 	.branch_ins(BranchIns),
 	.PC_control_out(PC_in)
@@ -93,7 +93,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	pipeline_IFID iPipe_IFID(
 	.clk(clk),
 	.rst(rst_reg),
-	.stall(stall),// | DSTALL),
+	.stall(stall_br | stall_mem | DSTALL),
 	.flush(branch_taken | ISTALL),
 	.Halt(Halt),
 	.Halt_ID(Halt_ID),
@@ -234,8 +234,8 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.Halt(Halt_ID),
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
-	.nop(stall),
-	.stall(DSTALL),
+	.nop(stall_br),
+	.stall(DSTALL | stall_mem),
 	.reg_data1_to_IDEX(reg_data1_to_IDEX),
 	.reg_data2_to_IDEX(reg_data2_to_IDEX),
 	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
@@ -350,6 +350,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.MemWrite(MemWrite_MEM),
 	.MemRead(MemRead_MEM),
 	.Flags_Set(Flags_Set),
+	.nop(stall_mem),
 	.stall(DSTALL),
 	.flagsOut(FLAGS_MEM),
 	.to_WBReg(Control_MEM_to_WB),
@@ -386,6 +387,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.MemtoReg(MemtoReg_WB),
 	.PCtoReg(PCtoReg_WB),
 	.Halt(Halt_WB),
+	.nop(1'b0),//DSTALL),
 	.reg_data_out(ALU_mux_out_WB),
 	.dmem_out(dmem_data_out_WB),
 	.DstReg_out(DstReg1_in_from_MEMWB),
@@ -425,7 +427,8 @@ hazDetect iHaz(
 	.Flags_Set(Flags_Set),
 	.BranchIns(BranchIns),
 	.BranchType(BranchType),
-	.stall(stall));
+	.stall_mem(stall_mem),
+	.stall_br(stall_br));
 
 /////////////// MEMORY ///////////////////////////
 
@@ -466,14 +469,14 @@ cache ICACHE(
 	.miss_detected());
 
 
-memory1c DMEM(
+/*memory1c DMEM(
 	.data_out(dmem_data_out),
 	.data_in(dmem_data_in),
 	.addr(dmem_addr),
 	.enable(MemWrite_MEM | MemRead_MEM),
 	.wr(dmem_wr),
 	.clk(clk),
-	.rst(rst_reg));
+	.rst(rst_reg));*/
 
 wire [15:0] DCACHE_addr = (MemWrite_MEM | MemRead_MEM) ? dmem_addr : 16'h0000;
 

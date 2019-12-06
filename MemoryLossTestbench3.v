@@ -128,18 +128,19 @@ module MemoryLossTestbench3();
                   MemDataIn,
 		  MemDataOut);
          if (RegWrite) begin
-            $fdisplay(trace_file,"REG: %d VALUE: 0x%04x",
+            $fdisplay(trace_file,"Instr: %d REG: %d VALUE: 0x%04x",
+		      (DUT.PC_out_MEMWB >> 1),
                       WriteRegister,
                       WriteData );            
          end
          if (MemRead) begin
-            $fdisplay(trace_file,"LOAD: ADDR: 0x%04x VALUE: 0x%04x",
-                      MemAddress, MemDataOut );
+            $fdisplay(trace_file,"Instr: %d LOAD: ADDR: 0x%04x VALUE: 0x%04x",
+                      (DUT.PC_out_EXMEM >> 1), MemAddress, MemDataOut );
          end
 
          if (MemWrite) begin
-            $fdisplay(trace_file,"STORE: ADDR: 0x%04x VALUE: 0x%04x",
-                      MemAddress, MemDataIn  );
+            $fdisplay(trace_file,"Instr: %d STORE: ADDR: 0x%04x VALUE: 0x%04x",
+                      (DUT.PC_out_EXMEM >> 1), MemAddress, MemDataIn  );
          end
          if (Halt) begin
             $fdisplay(sim_log_file, "SIMLOG:: Processor halted\n");
@@ -154,7 +155,8 @@ module MemoryLossTestbench3();
             $fclose(trace_file);
             $fclose(sim_log_file);
 	    #5;
-            $finish;
+            //$finish;
+	    $stop;
          end 
       end
       
