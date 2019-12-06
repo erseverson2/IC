@@ -1,4 +1,4 @@
-module pipeline_MEMWB(clk, rst, WB, reg_data_in, dmem_in, DstReg_in, RegWrite, MemtoReg, PCtoReg, Halt, reg_data_out, dmem_out, DstReg_out);
+module pipeline_MEMWB(clk, rst, WB, reg_data_in, dmem_in, DstReg_in, RegWrite, MemtoReg, PCtoReg, Halt, reg_data_out, dmem_out, DstReg_out, PC_in, PC_out);
 	input clk;
 	input rst;
 	input [3:0]WB;
@@ -36,4 +36,9 @@ module pipeline_MEMWB(clk, rst, WB, reg_data_in, dmem_in, DstReg_in, RegWrite, M
 	// @ Halt
 	// @ BranchType
 	// @ BranchIns
+
+	// Fix PCS
+	input [15:0] PC_in;
+	output [15:0] PC_out;
+	Bit16Reg PC_fwd(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(PC_in), .reg_out(PC_out));
 endmodule

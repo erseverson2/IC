@@ -35,7 +35,9 @@ module pipeline_IDEX(
 	output [3:0] SrcReg1_in_from_IDEX,
 	output [3:0] SrcReg2_in_from_IDEX,
 	output [3:0] DstReg1_in_from_IDEX,
-	output [3:0] LLB_LHB_from_IDEX); 
+	output [3:0] LLB_LHB_from_IDEX,
+	input [15:0] PC_in,
+	output [15:0] PC_out); 
 
 	wire [4:0] EXReg;
 	wire [3:0] WBReg;
@@ -84,5 +86,9 @@ module pipeline_IDEX(
 	Bit4Reg FWD_reg2_IDEX(.clk(clk), .rst(rst), .write_en(stall_n), .reg_in(srcReg2), .reg_out(SrcReg2_in_from_IDEX));
 	Bit4Reg FWD_reg3_IDEX(.clk(clk), .rst(rst), .write_en(stall_n), .reg_in(dstReg1), .reg_out(DstReg1_in_from_IDEX));
 	Bit4Reg FWD_llhb_IDEX(.clk(clk), .rst(rst), .write_en(stall_n), .reg_in(loadByte1), .reg_out(LLB_LHB_from_IDEX));
+
+
+	// Fix PCS
+	Bit16Reg PC_fwd(.clk(clk), .rst(rst), .write_en(stall_n), .reg_in(nop ? 16'h0000: PC_in), .reg_out(PC_out));
 
 endmodule

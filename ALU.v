@@ -1,6 +1,7 @@
 /* Group: Memory Loss
    Class: ECE 552-1 */
 
+// Order of Flags: {Z, V, N}
 module ALU(ALU_Out, ALU_In1, ALU_In2, Opcode, Flags, Flags_Set, isALU);
 
 	input[15:0] ALU_In1, ALU_In2;

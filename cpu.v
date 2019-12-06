@@ -2,7 +2,9 @@
    Group: Memory Loss
    Last Modified: Nov. 13, 2019 */
 
-// TODO: Eventually remove ALU_In2_MEM
+// TODO: Fix PCS
+// TODO: Verify that LRU works
+// TODO: Verify that cache writes work as specified
 
 // Order of Flags: {Z, V, N}
 module cpu(clk, rst_n, hlt, pc_out);
@@ -24,6 +26,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	wire [15:0] ALU_In1, ALU_In2, ALU_Out, ALU_mux_out, loaded_byte;
 	wire [15:0] PC_out_to_IFID, PC_out_from_IFID;
 	wire [15:0] PC_in;
+	wire[15:0] PC_out_IFID, PC_out_IDEX, PC_out_EXMEM, PC_out_MEMWB;
 
 	/////////////// Opcodes //////////////////////
 	// ADD		0000
@@ -90,14 +93,16 @@ module cpu(clk, rst_n, hlt, pc_out);
 	pipeline_IFID iPipe_IFID(
 	.clk(clk),
 	.rst(rst_reg),
-	.stall(stall | ISTALL),// | DSTALL),
-	.flush(branch_taken),
+	.stall(stall),// | DSTALL),
+	.flush(branch_taken | ISTALL),
 	.Halt(Halt),
 	.Halt_ID(Halt_ID),
 	.PC_out_to_IFID(PC_out_to_IFID),
 	.PC_out_from_IFID(PC_out_from_IFID),
 	.imem_data_out_to_IFID(imem_data_out_to_IFID),
-	.imem_data_out_from_IFID(imem_data_out_from_IFID));
+	.imem_data_out_from_IFID(imem_data_out_from_IFID),
+	.PC_in(PC_in),
+	.PC_out(PC_out_IFID));
 
 /////////////// DECODE (ID) ////////////////////////////
 
@@ -201,7 +206,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	// PC_in here, because it will be the output from PC_control, which is the already incremented PC
 	wire[15:0] dmem_data_out_WB;
 	wire[15:0] ALU_mux_out_WB;
-	assign reg_wrt_data = MemtoReg_WB ? dmem_data_out_WB : (PCtoReg_WB ? PC_in: ALU_mux_out_WB);
+	assign reg_wrt_data = MemtoReg_WB ? dmem_data_out_WB : (PCtoReg_WB ? PC_out_MEMWB: ALU_mux_out_WB);
 	/////////////// Registers End///////////////////
 
 /////////////// ID/EX ///////////////////////////
@@ -245,7 +250,9 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.reg_data2_from_IDEX(reg_data2_from_IDEX),
 	.SrcReg1_in_from_IDEX(SrcReg1_in_from_IDEX),
 	.SrcReg2_in_from_IDEX(SrcReg2_in_from_IDEX), 
-	.DstReg1_in_from_IDEX(DstReg1_in_from_IDEX));
+	.DstReg1_in_from_IDEX(DstReg1_in_from_IDEX),
+	.PC_in(PC_out_IFID),
+	.PC_out(PC_out_IDEX));
 
 /////////////// EXECUTE (EX) /////////////////////////
 
@@ -324,7 +331,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 /////////////// EX/MEM ///////////////////////////
 
 	wire MemWrite_MEM, MemRead_MEM;
-	wire[15:0] ALU_In2_MEM, ALU_data_MEM;
+	wire[15:0] ALU_data_MEM;
 	wire[3:0] Control_MEM_to_WB;
 	wire[3:0] DstReg1_in_from_EXMEM, SrcReg2_in_from_EXMEM;
 
@@ -336,7 +343,6 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.mem(Control_EX_to_MEM),
 	.flagsIn(FLAGS),
 	.reg_data_in(ALU_mux_out),
-	.rt_in(ALU_In2),
 	.ALU_data_in(ALU_data),
 	.ALU_data_out(ALU_data_MEM),
 	.DstReg_in(DstReg1_in_from_IDEX),
@@ -348,9 +354,10 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.flagsOut(FLAGS_MEM),
 	.to_WBReg(Control_MEM_to_WB),
 	.reg_data_out(ALU_mux_out_MEM),
-	.rt_out(ALU_In2_MEM),
 	.DstReg_out(DstReg1_in_from_EXMEM),
-	.SrcReg2_out(SrcReg2_in_from_EXMEM));
+	.SrcReg2_out(SrcReg2_in_from_EXMEM),
+	.PC_in(PC_out_IDEX),
+	.PC_out(PC_out_EXMEM));
 
 /////////////// MEMORY (MEM) /////////////////////////
 
@@ -381,7 +388,9 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.Halt(Halt_WB),
 	.reg_data_out(ALU_mux_out_WB),
 	.dmem_out(dmem_data_out_WB),
-	.DstReg_out(DstReg1_in_from_MEMWB));
+	.DstReg_out(DstReg1_in_from_MEMWB),
+	.PC_in(PC_out_EXMEM),
+	.PC_out(PC_out_MEMWB));
 
 /////////////// WRITEBACK (WB) ///////////////////////
 
@@ -457,14 +466,14 @@ cache ICACHE(
 	.miss_detected());
 
 
-/*memory1c DMEM(
+memory1c DMEM(
 	.data_out(dmem_data_out),
 	.data_in(dmem_data_in),
 	.addr(dmem_addr),
 	.enable(MemWrite_MEM | MemRead_MEM),
 	.wr(dmem_wr),
 	.clk(clk),
-	.rst(rst_reg));*/
+	.rst(rst_reg));
 
 wire [15:0] DCACHE_addr = (MemWrite_MEM | MemRead_MEM) ? dmem_addr : 16'h0000;
 
