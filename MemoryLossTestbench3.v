@@ -177,7 +177,7 @@ module MemoryLossTestbench3();
    assign Inst = DUT.imem_data_out_from_IFID;
    //Instruction fetched in the current cycle
    
-   assign RegWrite = DUT.RegWrite_MEMWB;
+   assign RegWrite = DUT.RegWrite_MEMWB & ~DUT.ISTALL & ~DUT.DSTALL;
    // Is register file being written to in this cycle, one bit signal (1 means yes, 0 means no)
   
    assign WriteRegister = DUT.DstReg1_in_from_MEMWB;
@@ -186,10 +186,10 @@ module MemoryLossTestbench3();
    assign WriteData = DUT.reg_wrt_data;
    // If above is true, this should hold the Data being written to the register. (16 bits)
    
-   assign MemRead =  DUT.MemRead_MEM;//DUT.ISTALL;// | DUT.DSTALL;
+   assign MemRead =  DUT.MemRead_MEM & ~DUT.ISTALL & ~DUT.DSTALL;
    // Is memory being read from, in this cycle. one bit signal (1 means yes, 0 means no)
    
-   assign MemWrite = DUT.MemWrite_MEM;// & ~DUT.ISTALL;
+   assign MemWrite = DUT.MemWrite_MEM & ~DUT.ISTALL & ~DUT.DSTALL;
    // Is memory being written to, in this cycle (1 bit signal)
    
    assign MemAddress = DUT.ALU_mux_out_MEM;

@@ -1,4 +1,4 @@
-module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, Flags_Set, reg_data_in, DstReg_in, SrcReg2_in, MemWrite, MemRead, flagsOut, to_WBReg, reg_data_out, DstReg_out, SrcReg2_out, ALU_data_in, ALU_data_out, stall, PC_in, PC_out, nop);
+module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, Flags_Set, reg_data_in, DstReg_in, SrcReg2_in, MemWrite, MemRead, flagsOut, to_WBReg, reg_data_out, DstReg_out, SrcReg2_out, ALU_data_in, ALU_data_out, stall, PC_in, PC_out, nop, LBIns_EX, LBIns_MEM);
 
 	input clk;
 	input rst;
@@ -12,6 +12,7 @@ module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, Flags_Set, reg_data_in, DstReg
 	input [3:0] SrcReg2_in;
 	input stall;
 	input nop;
+	input LBIns_EX;
 
 	output MemWrite, MemRead;
 	output [2:0]flagsOut;
@@ -20,9 +21,12 @@ module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, Flags_Set, reg_data_in, DstReg
 	output [15:0] ALU_data_out;
 	output [3:0] DstReg_out;
 	output [3:0] SrcReg2_out;
+	output LBIns_MEM;
 
 	assign stall_n = ~stall;
 	
+	// LBIns
+	dff iLB(.q(LBIns_MEM), .d(LBIns_EX), .wen(stall_n), .clk(clk), .rst(rst));
 	// MemWrite
 	Bit2Reg memReg(.clk(clk), .rst(rst), .write_en(stall_n), .reg_in(nop ? 2'b00 : mem), .reg_out({MemWrite, MemRead}));
 	// WB
@@ -36,7 +40,7 @@ module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, Flags_Set, reg_data_in, DstReg
 	// Mem2Mem FWD reg
 	Bit4Reg FWD_src_ExMem(.clk(clk), .rst(rst), .write_en(stall_n), .reg_in(nop ? 4'h0 : SrcReg2_in), .reg_out(SrcReg2_out));
 	// flags reg
-	Bit3Reg flags(.clk(clk), .rst(rst), .write_en(Flags_Set), .reg_in(nop ? 3'b000 : flagsIn), .reg_out(flagsOut));
+	Bit3Reg flags(.clk(clk), .rst(rst), .write_en(Flags_Set), .reg_in(flagsIn),/*nop ? 3'b000 : flagsIn),*/ .reg_out(flagsOut));
 	// MEM:
 	// @ MemWrite
 	//

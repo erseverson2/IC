@@ -32,7 +32,7 @@ assign condition_met =	(C == 3'b000) ? ~Z: // Not equal
 wire [15:0]branch_address, PC_plus_imm, next_address, PC_plus2;
 
 cla_16bit adder1(.A(PC_control_in), .B(16'h2), .Cin(1'b0), .S(PC_plus2), .Cout(), .Ovfl());
-cla_16bit adder2(.A(PC_plus2), .B({{6{I[8]}},{I[8:0]}, 1'b0}), .Cin(1'b0), .S(PC_plus_imm), .Cout(), .Ovfl());
+cla_16bit adder2(.A(PC_control_in),/*PC_plus2),*/ .B({{6{I[8]}},{I[8:0]}, 1'b0}), .Cin(1'b0), .S(PC_plus_imm), .Cout(), .Ovfl());
 
 // @ branch_type, 0 for B, 1 for Br
 assign branch_taken = branch_ins & condition_met & ~stall;

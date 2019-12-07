@@ -2,7 +2,6 @@
    Group: Memory Loss
    Last Modified: Nov. 13, 2019 */
 
-// TODO: Fix PCS
 // TODO: Verify that LRU works
 // TODO: Verify that cache writes work as specified
 
@@ -77,7 +76,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.reg2_data(reg_data1_to_IDEX),// one not two (not a typo)
 	.branch_type(BranchType),
 	.halt(Halt),
-	.stall(stall_br | stall_mem | ISTALL | DSTALL),
+	.stall(stall_br | stall_mem | ISTALL | DSTALL | jun_lin_stall),
 	.branch_taken(branch_taken),
 	.branch_ins(BranchIns),
 	.PC_control_out(PC_in)
@@ -93,7 +92,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	pipeline_IFID iPipe_IFID(
 	.clk(clk),
 	.rst(rst_reg),
-	.stall(stall_br | stall_mem | DSTALL),
+	.stall(stall_br | stall_mem | DSTALL | jun_lin_stall),
 	.flush(branch_taken | ISTALL),
 	.Halt(Halt),
 	.Halt_ID(Halt_ID),
@@ -134,6 +133,8 @@ module cpu(clk, rst_n, hlt, pc_out);
 
 	wire[3:0] opcode;
 	assign opcode = imem_data_out_from_IFID[15 : 12];
+
+	assign is_noop = &(~imem_data_out_from_IFID);
 
 	// BranchType 0 if its Branch immediate ins, 1 if Branch Register
 	assign BranchType = opcode[0];
@@ -226,7 +227,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.ALU_Opcode(ALU_Opcode),
 	.ALUSrc(ALUSrc),
 	.RegWrite(RegWrite),
-	.Reg2Src(Reg2Src),
+	.Reg2Src(~Reg2Src & ~is_noop),
 	.Reg2Src_EX(Reg2Src_EX),
 	.MemtoReg(MemtoReg),
 	.MemWrite(MemWrite),
@@ -234,8 +235,8 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.Halt(Halt_ID),
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
-	.nop(stall_br),
-	.stall(DSTALL | stall_mem),
+	.nop(stall_br | jun_lin_stall | stall_mem),
+	.stall(DSTALL),// | stall_mem),
 	.reg_data1_to_IDEX(reg_data1_to_IDEX),
 	.reg_data2_to_IDEX(reg_data2_to_IDEX),
 	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
@@ -311,8 +312,8 @@ module cpu(clk, rst_n, hlt, pc_out);
 	// ALUSrc_EX controls if RegisterSrcData2 or Signextedimm goes in to ALU src 2, 1 for offset, 0 for Reg_out2
 	// Also uses forwarded data if necessary
 	assign ALU_In1 = X2X_1 ? ALU_mux_out_MEM : (M2X_1 ? reg_wrt_data : reg_data1_from_IDEX);
-	assign ALU_In2 = X2X_2 ? ALU_mux_out_MEM : (M2X_2 ? reg_wrt_data : 
-						(ALUSrc_EX ? ((|Control_EX_to_MEM) ? imm_shifted : imm_unshifted): reg_data2_from_IDEX));
+	//assign ALU_In2 = X2X_2 ? ALU_mux_out_MEM : (M2X_2 ? reg_wrt_data : (ALUSrc_EX ? ((|Control_EX_to_MEM) ? imm_shifted : imm_unshifted): reg_data2_from_IDEX));
+	assign ALU_In2 = X2X_2 ? ALU_mux_out_MEM : ALUSrc_EX ? ((|Control_EX_to_MEM) ? imm_shifted : imm_unshifted) : M2X_2 ? reg_wrt_data : reg_data2_from_IDEX;
 	assign ALU_data = X2X_2 ? ALU_mux_out_MEM : (M2X_2 ? reg_wrt_data : reg_data2_from_IDEX);
 
 	wire Flags_Set;
@@ -322,7 +323,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.ALU_In1(ALU_In1),
 	.ALU_In2(ALU_In2),
 	.Opcode(ALU_Opcode_EX),
-	.isALU(~Reg2Src_EX),
+	.isALU(Reg2Src_EX),
 	.Flags(FLAGS),
 	.Flags_Set(Flags_Set));
 
@@ -350,7 +351,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.MemWrite(MemWrite_MEM),
 	.MemRead(MemRead_MEM),
 	.Flags_Set(Flags_Set),
-	.nop(stall_mem),
+	.nop(1'b0),
 	.stall(DSTALL),
 	.flagsOut(FLAGS_MEM),
 	.to_WBReg(Control_MEM_to_WB),
@@ -358,7 +359,9 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.DstReg_out(DstReg1_in_from_EXMEM),
 	.SrcReg2_out(SrcReg2_in_from_EXMEM),
 	.PC_in(PC_out_IDEX),
-	.PC_out(PC_out_EXMEM));
+	.PC_out(PC_out_EXMEM),
+	.LBIns_EX(LBIns_EX),
+	.LBIns_MEM(LBIns_MEM));
 
 /////////////// MEMORY (MEM) /////////////////////////
 
@@ -412,7 +415,12 @@ forwarding_unit iFWD(
 	.SrcReg2_in_from_IDEX(SrcReg2_in_from_IDEX),
 	.DstReg1_in_from_IDEX(DstReg1_in_from_IDEX),
 	.MemRead_MEM(MemRead_MEM),
-	.DMEM_fwd(DMEM_fwd));
+	.DMEM_fwd(DMEM_fwd),
+	.LBIns_EX(LBIns_EX),
+	.RegWrite_IDEX(Control_EX_to_WB[3]),
+	.SrcReg2_in_to_IDEX(SrcReg2_in_to_IDEX),
+	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
+	.jun_lin_stall(jun_lin_stall));
 
 /////////////// STALLS ///////////////////////////
 
