@@ -1,4 +1,4 @@
-module pipeline_MEMWB(clk, rst, WB, reg_data_in, dmem_in, DstReg_in, RegWrite, MemtoReg, PCtoReg, Halt, reg_data_out, dmem_out, DstReg_out, PC_in, PC_out, nop);
+module pipeline_MEMWB(clk, rst, WB, reg_data_in, dmem_in, DstReg_in, RegWrite, MemtoReg, PCtoReg, Halt, reg_data_out, dmem_out, DstReg_out, PC_in, PC_out, nop, is_noop_in, is_noop_out);
 	input clk;
 	input rst;
 	input [3:0]WB;
@@ -41,5 +41,10 @@ module pipeline_MEMWB(clk, rst, WB, reg_data_in, dmem_in, DstReg_in, RegWrite, M
 	// Fix PCS
 	input [15:0] PC_in;
 	output [15:0] PC_out;
-	Bit16Reg PC_fwd(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(PC_in), .reg_out(PC_out));
+	Bit16Reg PC_fwd(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(nop ? 16'h0000 : PC_in), .reg_out(PC_out));
+
+	// Detect when to avoid regwrite
+	input is_noop_in;
+	output is_noop_out;
+	dff iNOP(.q(is_noop_out), .d(nop ? 1'b0 : is_noop_in), .wen(1'b1), .clk(clk), .rst(rst));
 endmodule

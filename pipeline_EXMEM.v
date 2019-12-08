@@ -1,4 +1,4 @@
-module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, Flags_Set, reg_data_in, DstReg_in, SrcReg2_in, MemWrite, MemRead, flagsOut, to_WBReg, reg_data_out, DstReg_out, SrcReg2_out, ALU_data_in, ALU_data_out, stall, PC_in, PC_out, nop, LBIns_EX, LBIns_MEM);
+module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, Flags_Set, reg_data_in, DstReg_in, SrcReg2_in, MemWrite, MemRead, flagsOut, to_WBReg, reg_data_out, DstReg_out, SrcReg2_out, ALU_data_in, ALU_data_out, stall, PC_in, PC_out, nop, LBIns_EX, LBIns_MEM, is_noop_in, is_noop_out);
 
 	input clk;
 	input rst;
@@ -56,5 +56,10 @@ module pipeline_EXMEM(clk, rst, WB, mem, flagsIn, Flags_Set, reg_data_in, DstReg
 	// Fix PCS
 	input [15:0] PC_in;
 	output [15:0] PC_out;
-	Bit16Reg PC_fwd(.clk(clk), .rst(rst), .write_en(stall_n), .reg_in(stall ? 16'h0000: PC_in), .reg_out(PC_out));
+	Bit16Reg PC_fwd(.clk(clk), .rst(rst), .write_en(stall_n), .reg_in(nop ? 16'h0000 : PC_in), .reg_out(PC_out));
+
+	// Detect when to avoid regwrite
+	input is_noop_in;
+	output is_noop_out;
+	dff iNOP(.q(is_noop_out), .d(nop ? 1'b0 : is_noop_in), .wen(stall_n), .clk(clk), .rst(rst));
 endmodule

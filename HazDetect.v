@@ -16,7 +16,7 @@ module hazDetect(memRead_DX, memRead_XM, registerRd_DX, registerRs_FD, registerR
 	output stall_mem;
 	output stall_br;
 
-	assign regRd = registerRd_DX != 4'h0;
+	assign regRd = 1'b1;//registerRd_DX != 4'h0;
 	assign regRD_RS = registerRd_DX == registerRs_FD;
 	assign regRD_RS_MEM = registerRd_XM == registerRs_FD;
 	assign regRD_RT = registerRd_DX == registerRt_FD;

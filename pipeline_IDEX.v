@@ -37,7 +37,9 @@ module pipeline_IDEX(
 	output [3:0] DstReg1_in_from_IDEX,
 	output [3:0] LLB_LHB_from_IDEX,
 	input [15:0] PC_in,
-	output [15:0] PC_out); 
+	output [15:0] PC_out,
+	input is_noop_in,
+	output is_noop_out); 
 
 	wire [4:0] EXReg;
 	wire [3:0] WBReg;
@@ -90,5 +92,8 @@ module pipeline_IDEX(
 
 	// Fix PCS
 	Bit16Reg PC_fwd(.clk(clk), .rst(rst), .write_en(stall_n), .reg_in(nop ? 16'h0000: PC_in), .reg_out(PC_out));
+
+	// Detect when to avoid regwrite
+	dff iNOP(.q(is_noop_out), .d(nop ? 1'b0 : is_noop_in), .wen(stall_n), .clk(clk), .rst(rst));
 
 endmodule

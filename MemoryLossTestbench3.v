@@ -135,7 +135,7 @@ module MemoryLossTestbench3();
          end
          if (MemRead) begin
             $fdisplay(trace_file,"Instr: %d LOAD: ADDR: 0x%04x VALUE: 0x%04x",
-                      (DUT.PC_out_EXMEM >> 1), MemAddress, MemDataOut );
+                      (DUT.PC_out_EXMEM >> 1), MemAddress, MemDataOut);
          end
 
          if (MemWrite) begin
@@ -177,7 +177,7 @@ module MemoryLossTestbench3();
    assign Inst = DUT.imem_data_out_from_IFID;
    //Instruction fetched in the current cycle
    
-   assign RegWrite = DUT.RegWrite_MEMWB & ~DUT.ISTALL & ~DUT.DSTALL;
+   assign RegWrite = DUT.RegWrite_noop;
    // Is register file being written to in this cycle, one bit signal (1 means yes, 0 means no)
   
    assign WriteRegister = DUT.DstReg1_in_from_MEMWB;
@@ -186,10 +186,10 @@ module MemoryLossTestbench3();
    assign WriteData = DUT.reg_wrt_data;
    // If above is true, this should hold the Data being written to the register. (16 bits)
    
-   assign MemRead =  DUT.MemRead_MEM & ~DUT.ISTALL & ~DUT.DSTALL;
+   assign MemRead =  DUT.MemRead_MEM;
    // Is memory being read from, in this cycle. one bit signal (1 means yes, 0 means no)
    
-   assign MemWrite = DUT.MemWrite_MEM & ~DUT.ISTALL & ~DUT.DSTALL;
+   assign MemWrite = DUT.MemWrite_MEM;
    // Is memory being written to, in this cycle (1 bit signal)
    
    assign MemAddress = DUT.ALU_mux_out_MEM;

@@ -508,18 +508,18 @@ cache ICACHE(
 	.miss_detected());
 
 
-/*memory1c DMEM(
+memory1c DMEM(
 	.data_out(dmem_data_out),
 	.data_in(dmem_data_in),
 	.addr(dmem_addr),
 	.enable(MemWrite_MEM | MemRead_MEM),
 	.wr(dmem_wr),
 	.clk(clk),
-	.rst(rst_reg));*/
+	.rst(rst_reg));
 
-wire [15:0] DCACHE_addr = (MemWrite_MEM | MemRead_MEM) ? dmem_addr : 16'h0000;
+//wire [15:0] DCACHE_addr = (MemWrite_MEM | MemRead_MEM) ? dmem_addr : 16'h0000;
 
-cache DCACHE(
+/*cache DCACHE(
 	.clk(clk),
 	.rst(rst_reg),
 	.cacheAddress(DCACHE_addr),
@@ -530,6 +530,6 @@ cache DCACHE(
 	.cache_stall(DSTALL),
 	.memory_address(DCACHE_read_addr),
 	.waitForICACHE(ISTALL),
-	.miss_detected(DCACHE_miss));
+	.miss_detected(DCACHE_miss));*/
 	
 endmodule
