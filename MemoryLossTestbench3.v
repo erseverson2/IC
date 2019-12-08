@@ -204,7 +204,7 @@ module MemoryLossTestbench3();
    // What is this? assign ICacheReq = DUT.p0.icr;
    // Signal indicating a valid instruction read request to cache
    
-   assign ICacheHit = ~DUT.ICACHE.miss_detected;
+   //assign ICacheHit = ~DUT.ICACHE.miss_detected;
    // Signal indicating a valid instruction cache hit
 
    assign DCacheReq = DUT.MemWrite_MEM | DUT.MemRead_MEM;

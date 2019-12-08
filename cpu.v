@@ -378,8 +378,8 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.MemWrite(MemWrite_MEM),
 	.MemRead(MemRead_MEM),
 	.Flags_Set(Flags_Set),
-	.nop(1'b0),
-	.stall(DSTALL),
+	.nop(DSTALL),
+	.stall(1'b0),//DSTALL),
 	.flagsOut(FLAGS_MEM),
 	.to_WBReg(Control_MEM_to_WB),
 	.reg_data_out(ALU_mux_out_MEM),
@@ -480,6 +480,7 @@ memory4c MCMEM(
 	.data_in(dmem_data_in),
 	.addr(ISTALL ? ICACHE_read_addr : DCACHE_read_addr),
 	.enable(ISTALL | DSTALL),
+	//.wr(MemWrite_MEM & ~DSTALL & ~DCACHE_miss),
 	.wr(MemWrite_MEM & ~ISTALL & ~DCACHE_miss),
 	.clk(clk),
 	.rst(rst_reg),
@@ -518,6 +519,7 @@ cache ICACHE(
 	.rst(rst_reg));*/
 
 wire [15:0] DCACHE_addr = (MemWrite_MEM | MemRead_MEM) ? dmem_addr : 16'h0000;
+//wire [15:0] DCACHE_addr = dmem_addr;
 
 cache DCACHE(
 	.clk(clk),
