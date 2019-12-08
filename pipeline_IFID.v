@@ -7,6 +7,8 @@ module pipeline_IFID(
 	input rst,
 	input stall,
 	input flush,
+	input Halt,
+	output Halt_ID,
 	input [15:0] PC_out_to_IFID,
 	output [15:0] PC_out_from_IFID,
 	input [15:0] imem_data_out_to_IFID,
@@ -20,5 +22,7 @@ module pipeline_IFID(
 
 	Bit16Reg iPC_reg_IFID(.clk(clk), .rst(rst), .write_en(stall_n | flush), .reg_in(PC_out_to_IFID), .reg_out(PC_out_from_IFID));
 	Bit16Reg IMEM_reg_IFID(.clk(clk), .rst(rst), .write_en(stall_n | flush), .reg_in(imem_reg), .reg_out(imem_data_out_from_IFID));
+
+	dff iHalt_reg(.q(Halt_ID), .d(Halt), .wen(stall_n | flush), .clk(clk), .rst(rst | flush));
 
 endmodule

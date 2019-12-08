@@ -1,4 +1,4 @@
-module MemoryLossTestbench();
+module MemoryLossTestbench3();
   
 
    wire [15:0] PC;
@@ -13,6 +13,10 @@ module MemoryLossTestbench();
    wire [15:0] MemAddress;
    wire [15:0] MemDataIn;	/* Read from Memory */
    wire [15:0] MemDataOut;	/* Written to Memory */
+   wire        DCacheHit;
+   wire        ICacheHit;
+   wire        DCacheReq;
+   wire        ICacheReq;
 
    wire        Halt;         /* Halt executed and in Memory or writeback stage */
         
@@ -21,6 +25,13 @@ module MemoryLossTestbench();
 
    integer     trace_file;
    integer     sim_log_file;
+
+
+   integer     DCacheHit_count;
+   integer     ICacheHit_count;
+   integer     DCacheReq_count;
+   integer     ICacheReq_count;
+
 
    reg clk; /* Clock input */
    reg rst_n; /* (Active low) Reset input */
@@ -40,6 +51,11 @@ module MemoryLossTestbench();
       $display("Hello world...simulation starting");
       $display("See verilogsim.plog and verilogsim.ptrace for output");
       inst_count = 0;
+      DCacheHit_count = 0;
+      ICacheHit_count = 0;
+      DCacheReq_count = 0;
+      ICacheReq_count = 0;
+
       trace_file = $fopen("verilogsim.ptrace");
       sim_log_file = $fopen("verilogsim.plog");
       
@@ -86,6 +102,19 @@ module MemoryLossTestbench();
          if (Halt || RegWrite || MemWrite) begin
             inst_count = inst_count + 1;
          end
+	 if (DCacheHit) begin
+            DCacheHit_count = DCacheHit_count + 1;	 	
+         end	
+	 if (ICacheHit) begin
+            ICacheHit_count = ICacheHit_count + 1;	 	
+	 end    
+	 if (DCacheReq) begin
+            DCacheReq_count = DCacheReq_count + 1;	 	
+         end	
+	 if (ICacheReq) begin
+            ICacheReq_count = ICacheReq_count + 1;	 	
+	 end 
+
          $fdisplay(sim_log_file, "SIMLOG:: Cycle %d PC: %8x I: %8x R: %d %3d %8x M: %d %d %8x %8x %8x",
                   cycle_count,
                   PC,
@@ -116,6 +145,11 @@ module MemoryLossTestbench();
             $fdisplay(sim_log_file, "SIMLOG:: Processor halted\n");
             $fdisplay(sim_log_file, "SIMLOG:: sim_cycles %d\n", cycle_count);
             $fdisplay(sim_log_file, "SIMLOG:: inst_count %d\n", inst_count);
+            $fdisplay(sim_log_file, "SIMLOG:: dcachehit_count %d\n", DCacheHit_count);
+            $fdisplay(sim_log_file, "SIMLOG:: icachehit_count %d\n", ICacheHit_count);
+            $fdisplay(sim_log_file, "SIMLOG:: dcachereq_count %d\n", DCacheReq_count);
+            $fdisplay(sim_log_file, "SIMLOG:: icachereq_count %d\n", ICacheReq_count);
+
 
             $fclose(trace_file);
             $fclose(sim_log_file);
@@ -138,7 +172,7 @@ module MemoryLossTestbench();
    // Is processor halted (1 bit signal)
    
 
-   assign Inst = DUT.imem_data_out_to_IFID;
+   assign Inst = DUT.imem_data_out_from_IFID;
    //Instruction fetched in the current cycle
    
    assign RegWrite = DUT.RegWrite_MEMWB;
@@ -150,10 +184,10 @@ module MemoryLossTestbench();
    assign WriteData = DUT.reg_wrt_data;
    // If above is true, this should hold the Data being written to the register. (16 bits)
    
-   assign MemRead = DUT.MemRead_MEM;
+   assign MemRead =  DUT.MemRead_MEM;//DUT.ISTALL;// | DUT.DSTALL;
    // Is memory being read from, in this cycle. one bit signal (1 means yes, 0 means no)
    
-   assign MemWrite = DUT.MemWrite_MEM;
+   assign MemWrite = DUT.MemWrite_MEM;// & ~DUT.ISTALL;
    // Is memory being written to, in this cycle (1 bit signal)
    
    assign MemAddress = DUT.ALU_mux_out_MEM;
@@ -165,6 +199,17 @@ module MemoryLossTestbench();
    assign MemDataOut = DUT.dmem_data_out;
    // If there's a memory read in this cycle, this is the data being read out of memory (16 bits)
 
+   // What is this? assign ICacheReq = DUT.p0.icr;
+   // Signal indicating a valid instruction read request to cache
+   
+   assign ICacheHit = ~DUT.ICACHE.miss_detected;
+   // Signal indicating a valid instruction cache hit
+
+   assign DCacheReq = DUT.MemWrite_MEM | DUT.MemRead_MEM;
+   // Signal indicating a valid instruction data read or write request to cache
+   
+   //assign DCacheHit = ~DUT.DCACHE.miss_detected;
+   // Signal indicating a valid data cache hit
 
 
    /* Add anything else you want here */
