@@ -60,7 +60,8 @@ always @(*)
 		8'b11_000000 :
 			begin
 				word_count_nxt = 5'b00001; //0 + 1 = 1
-				write_data_array = 1'b1;
+				write_data_array = 1'b0;
+				//write_data_array = 1'b1;
 				write_tag_array = 1'b0;
 				memory_address = miss_address & 16'hFFF0 | 16'h0000;
 				block_num = 3'b000;
@@ -69,7 +70,7 @@ always @(*)
 		8'b11_000001 :
 			begin
 				word_count_nxt = 5'b00000;
-				write_data_array = 1'b0;
+				//write_data_array = 1'b0;
 				write_tag_array = 1'b0;
 				block_num = 3'b000;
 			end
@@ -77,21 +78,21 @@ always @(*)
 		8'b11_00001? :
 			begin
 				word_count_nxt = 5'b00010; //1 + 1 = 2
-				write_data_array = 1'b1;
+				//write_data_array = 1'b1;
 				memory_address = miss_address & 16'hFFF0 | 16'h0002;
 				block_num = 3'b000;
 			end
 		8'b11_00010? :
 			begin
 				word_count_nxt = 5'b00011; //2 + 1 = 3
-				write_data_array = 1'b1;
+				//write_data_array = 1'b1;
 				memory_address = miss_address & 16'hFFF0 | 16'h0004;
 				block_num = 3'b000;
 			end
 		8'b11_00011? :
 			begin
 				word_count_nxt = 5'b00100; //3 + 1 = 4
-				write_data_array = 1'b1;
+				//write_data_array = 1'b1;
 				memory_address = miss_address & 16'hFFF0 | 16'h0006;
 				block_num = 3'b000;
 			end
@@ -187,31 +188,75 @@ Bit5Reg iCount(.clk(clk), .rst(rst), .write_en(1'b1), .reg_in(word_count_nxt), .
 // 0 : IDLE
 // 1 : WAIT
 always @(*)
-	casez ({state, miss_detected, word_count_nxt[4]})
+	casex ({rst, state, miss_detected, word_count_nxt[4]})
+		4'b1??? :
+			begin
+				nxt_state = 1'b0;
+				fsm_busy = 1'b0;
+			end
+		4'b000? :
+			begin
+				nxt_state = 1'b0;
+				fsm_busy = 1'b0;
+			end
+		4'b001? :
+			begin
+				nxt_state = 1'b1;
+				fsm_busy = 1'b1;
+			end
+		4'b01?0 :
+			begin
+				nxt_state = 1'b1;
+				fsm_busy = 1'b1;
+				memory_address = miss_address;
+			end
+		4'b01?1 :
+			begin
+				nxt_state = 1'b0;
+				fsm_busy = 1'b0;
+			end
+		// Reset state
+		/*4'b1??? :
+			begin
+				nxt_state = 1'b0; // Stay in IDLE until cache miss
+				fsm_busy = 1'b0; // Not handling a miss	
+				$display("State R");
+				$display("State: %d, miss_detected: %d, word_cnt: %d\n", state, miss_detected, word_count_nxt[4]);
+			end
 		// IDLE and no cache miss
-		3'b00? :
+		4'b0000 :
 			begin
 				nxt_state = 1'b0; // Stay in IDLE until cache miss
 				fsm_busy = 1'b0; // Not handling a miss
+				$display("State A");
+				$display("State: %d, miss_detected: %d, word_cnt: %d\n", state, miss_detected, word_count_nxt[4]);
 			end
 		// IDLE and cache miss
-		3'b01? :
+		4'b0010 :
 			begin
 				nxt_state = 1'b1; // Miss detected, so change state
 				fsm_busy = 1'b1; // Handling a miss
 				memory_address = miss_address;
+				$display("State B");
+				$display("State: %d, miss_detected: %d, word_cnt: %d\n", state, miss_detected, word_count_nxt[4]);
 			end
 		// WAIT and more to receive
-		3'b1?0 :
+		4'b01?0 :
 			begin
+				$display("State C");
+				$display("State: %d, miss_detected: %d, word_cnt: %d\n", state, miss_detected, word_count_nxt[4]);
 				nxt_state = 1'b1; // Still more data to receive
 				fsm_busy = 1'b1; // Still handling a miss
+				$display("State: %d, miss_detected: %d, word_cnt: %d\n", state, miss_detected, word_count_nxt[4]);
 			end
 		// WAIT and done receiving
-		3'b1?1 :
+		4'b0101 :
 			begin
+				$display("State D");
+				$display("State: %d, miss_detected: %d, word_cnt: %d\n", state, miss_detected, word_count_nxt[4]);
 				nxt_state = 1'b0; // Return to IDLE state
 				fsm_busy = 1'b0; // Done with the miss
-			end
+				$display("State: %d, miss_detected: %d, word_cnt: %d\n", state, miss_detected, word_count_nxt[4]);
+			end*/
 	endcase
 endmodule

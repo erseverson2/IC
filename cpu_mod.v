@@ -76,7 +76,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.reg2_data(reg_data1_to_IDEX),// one not two (not a typo)
 	.branch_type(BranchType),
 	.halt(Halt),
-	.stall(stall_br | stall_mem | ISTALL | DSTALL | jun_lin_stall),
+	.stall(stall_br | stall_mem),// | ISTALL | DSTALL | jun_lin_stall),
 	.branch_taken(branch_taken),
 	.branch_ins(BranchIns),
 	.PC_control_out(PC_in)
@@ -92,8 +92,8 @@ module cpu(clk, rst_n, hlt, pc_out);
 	pipeline_IFID iPipe_IFID(
 	.clk(clk),
 	.rst(rst_reg),
-	.stall(stall_br | stall_mem | DSTALL | jun_lin_stall),
-	.flush(branch_taken | ISTALL),
+	.stall(stall_br | stall_mem),// | DSTALL | jun_lin_stall),
+	.flush(branch_taken),// | ISTALL),
 	.Halt(Halt),
 	.Halt_ID(Halt_ID),
 	.PC_out_to_IFID(PC_out_to_IFID),
@@ -261,7 +261,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.LBIns(LBIns),
 	.PCtoReg(PCtoReg),
 	.nop(stall_br | jun_lin_stall | stall_mem),
-	.stall(DSTALL),// | stall_mem),
+	.stall(1'b0),//DSTALL),// | stall_mem),
 	.reg_data1_to_IDEX(reg_data1_to_IDEX),
 	.reg_data2_to_IDEX(reg_data2_to_IDEX),
 	.SrcReg1_in_to_IDEX(SrcReg1_in_to_IDEX),
@@ -378,7 +378,7 @@ module cpu(clk, rst_n, hlt, pc_out);
 	.MemWrite(MemWrite_MEM),
 	.MemRead(MemRead_MEM),
 	.Flags_Set(Flags_Set),
-	.nop(DSTALL),
+	.nop(1'b0),
 	.stall(1'b0),//DSTALL),
 	.flagsOut(FLAGS_MEM),
 	.to_WBReg(Control_MEM_to_WB),
@@ -475,27 +475,26 @@ wire [15:0] mcm_data_out;
 wire [15:0] ICACHE_read_addr, DCACHE_read_addr;
 wire mcm_data_valid;
 
-memory4c MCMEM(
+/*memory4c MCMEM(
 	.data_out(mcm_data_out),
 	.data_in(dmem_data_in),
 	.addr(ISTALL ? ICACHE_read_addr : DCACHE_read_addr),
 	.enable(ISTALL | DSTALL),
-	//.wr(MemWrite_MEM & ~DSTALL & ~DCACHE_miss),
 	.wr(MemWrite_MEM & ~ISTALL & ~DCACHE_miss),
 	.clk(clk),
 	.rst(rst_reg),
-	.data_valid(mcm_data_valid));
+	.data_valid(mcm_data_valid));*/
 
-/*memory1c IMEM(
+memory1c IMEM(
 	.data_out(imem_data_out_to_IFID),
 	.data_in(),
 	.addr(PC_out_to_IFID),
 	.enable(1'b1),
 	.wr(1'b0),
 	.clk(clk),
-	.rst(rst_reg));*/
+	.rst(rst_reg));
 
-cache ICACHE(
+/*cache ICACHE(
 	.clk(clk),
 	.rst(rst_reg),
 	.cacheAddress(PC_out_to_IFID),
@@ -506,22 +505,21 @@ cache ICACHE(
 	.cache_stall(ISTALL),
 	.memory_address(ICACHE_read_addr),
 	.waitForICACHE(1'b0),
-	.miss_detected());
+	.miss_detected());*/
 
 
-/*memory1c DMEM(
+memory1c DMEM(
 	.data_out(dmem_data_out),
 	.data_in(dmem_data_in),
 	.addr(dmem_addr),
 	.enable(MemWrite_MEM | MemRead_MEM),
 	.wr(dmem_wr),
 	.clk(clk),
-	.rst(rst_reg));*/
+	.rst(rst_reg));
 
-wire [15:0] DCACHE_addr = (MemWrite_MEM | MemRead_MEM) ? dmem_addr : 16'h0000;
-//wire [15:0] DCACHE_addr = dmem_addr;
+//wire [15:0] DCACHE_addr = (MemWrite_MEM | MemRead_MEM) ? dmem_addr : 16'h0000;
 
-cache DCACHE(
+/*cache DCACHE(
 	.clk(clk),
 	.rst(rst_reg),
 	.cacheAddress(DCACHE_addr),
@@ -532,6 +530,6 @@ cache DCACHE(
 	.cache_stall(DSTALL),
 	.memory_address(DCACHE_read_addr),
 	.waitForICACHE(ISTALL),
-	.miss_detected(DCACHE_miss));
+	.miss_detected(DCACHE_miss));*/
 	
 endmodule

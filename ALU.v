@@ -1,6 +1,7 @@
 /* Group: Memory Loss
    Class: ECE 552-1 */
 
+// Order of Flags: {Z, V, N}
 module ALU(ALU_Out, ALU_In1, ALU_In2, Opcode, Flags, Flags_Set, isALU);
 
 	input[15:0] ALU_In1, ALU_In2;
@@ -121,6 +122,7 @@ module addsub_16bit(Sum, Ovfl, Sign, A, B, sub);
     wire[15:0] B_XOR;
 
     assign B_XOR = {16{sub}} ^ B;
+    //assign Sign = Sum[15];
 
     cla_16bit iCLA(.A(A), .B(B_XOR), .Cin(sub), .S(Sum), .Cout(Sign), .Ovfl(Ovfl));
 

@@ -77,7 +77,7 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	.clk(clk),
 	.rst(rst),
 	.DataIn({1'b1, LRU0, cacheAddress[15:10]}),
-	.Write((write_tag_array & cache_stall) | writeEnable),
+	.Write(write_to_cache),
 	.BlockEnable(decode_set_meta0),
 	.DataOut(tagValid0));
 
@@ -85,14 +85,19 @@ module cache (clk, rst, cacheAddress, cacheDataOut, cacheDataIn, writeEnable, me
 	.clk(clk),
 	.rst(rst),
 	.DataIn({1'b1, ~LRU0, cacheAddress[15:10]}),
-	.Write((write_tag_array & cache_stall) | writeEnable),
+	.Write(write_to_cache),
 	.BlockEnable(decode_set_meta1),
 	.DataOut(tagValid1));
 
-	dff iLRU(.q(LRU0), .d(data1Hit ? 1'b0 : data2Hit ? 1'b1 : ~tagValid0[6]), .wen(~write_tag_array), .clk(clk), .rst(rst));
+	assign write_to_cache = (write_tag_array & cache_stall) | writeEnable;
 
-	assign data1Hit = tagValid0[7] & (tagValid0[5:0] == cacheAddress[15:10]);
-	assign data2Hit = tagValid1[7] & (tagValid1[5:0] == cacheAddress[15:10]);
+	dff iLRU(.q(LRU0), .d(data1Hit ? 1'b0 : data2Hit ? 1'b1 : ~tagValid0[6]), .wen(~write_to_cache), .clk(clk), .rst(rst));
+
+	dff iDH1(.q(data1Hit), .d(tagValid0[7] & (tagValid0[5:0] == cacheAddress[15:10])), .wen(~write_to_cache), .clk(clk), .rst(rst));
+	dff iDH2(.q(data2Hit), .d(tagValid1[7] & (tagValid1[5:0] == cacheAddress[15:10])), .wen(~write_to_cache), .clk(clk), .rst(rst));
+
+	//assign data1Hit = tagValid0[7] & (tagValid0[5:0] == cacheAddress[15:10]);
+	//assign data2Hit = tagValid1[7] & (tagValid1[5:0] == cacheAddress[15:10]);
 	assign cacheDataOut = data1Hit ? arrayDataOut1 : data2Hit ? arrayDataOut2 : 16'h0000;
 
 	assign miss_detected = ~(data1Hit | data2Hit);

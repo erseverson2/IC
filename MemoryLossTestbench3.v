@@ -128,18 +128,19 @@ module MemoryLossTestbench3();
                   MemDataIn,
 		  MemDataOut);
          if (RegWrite) begin
-            $fdisplay(trace_file,"REG: %d VALUE: 0x%04x",
+            $fdisplay(trace_file,"Instr: %d REG: %d VALUE: 0x%04x",
+		      (DUT.PC_out_MEMWB >> 1),
                       WriteRegister,
                       WriteData );            
          end
          if (MemRead) begin
-            $fdisplay(trace_file,"LOAD: ADDR: 0x%04x VALUE: 0x%04x",
-                      MemAddress, MemDataOut );
+            $fdisplay(trace_file,"Instr: %d LOAD: ADDR: 0x%04x VALUE: 0x%04x",
+                      (DUT.PC_out_EXMEM >> 1), MemAddress, MemDataOut);
          end
 
          if (MemWrite) begin
-            $fdisplay(trace_file,"STORE: ADDR: 0x%04x VALUE: 0x%04x",
-                      MemAddress, MemDataIn  );
+            $fdisplay(trace_file,"Instr: %d STORE: ADDR: 0x%04x VALUE: 0x%04x",
+                      (DUT.PC_out_EXMEM >> 1), MemAddress, MemDataIn  );
          end
          if (Halt) begin
             $fdisplay(sim_log_file, "SIMLOG:: Processor halted\n");
@@ -154,7 +155,8 @@ module MemoryLossTestbench3();
             $fclose(trace_file);
             $fclose(sim_log_file);
 	    #5;
-            $finish;
+            //$finish;
+	    $stop;
          end 
       end
       
@@ -175,7 +177,7 @@ module MemoryLossTestbench3();
    assign Inst = DUT.imem_data_out_from_IFID;
    //Instruction fetched in the current cycle
    
-   assign RegWrite = DUT.RegWrite_MEMWB;
+   assign RegWrite = DUT.RegWrite_noop;
    // Is register file being written to in this cycle, one bit signal (1 means yes, 0 means no)
   
    assign WriteRegister = DUT.DstReg1_in_from_MEMWB;
@@ -184,10 +186,10 @@ module MemoryLossTestbench3();
    assign WriteData = DUT.reg_wrt_data;
    // If above is true, this should hold the Data being written to the register. (16 bits)
    
-   assign MemRead =  DUT.MemRead_MEM;//DUT.ISTALL;// | DUT.DSTALL;
+   assign MemRead =  DUT.MemRead_MEM;
    // Is memory being read from, in this cycle. one bit signal (1 means yes, 0 means no)
    
-   assign MemWrite = DUT.MemWrite_MEM;// & ~DUT.ISTALL;
+   assign MemWrite = DUT.MemWrite_MEM;
    // Is memory being written to, in this cycle (1 bit signal)
    
    assign MemAddress = DUT.ALU_mux_out_MEM;
@@ -202,7 +204,7 @@ module MemoryLossTestbench3();
    // What is this? assign ICacheReq = DUT.p0.icr;
    // Signal indicating a valid instruction read request to cache
    
-   assign ICacheHit = ~DUT.ICACHE.miss_detected;
+   //assign ICacheHit = ~DUT.ICACHE.miss_detected;
    // Signal indicating a valid instruction cache hit
 
    assign DCacheReq = DUT.MemWrite_MEM | DUT.MemRead_MEM;
