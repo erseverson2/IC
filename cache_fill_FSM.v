@@ -60,7 +60,8 @@ always @(*)
 		8'b11_000000 :
 			begin
 				word_count_nxt = 5'b00001; //0 + 1 = 1
-				write_data_array = 1'b1;
+				write_data_array = 1'b0;
+				//write_data_array = 1'b1;
 				write_tag_array = 1'b0;
 				memory_address = miss_address & 16'hFFF0 | 16'h0000;
 				block_num = 3'b000;
@@ -69,7 +70,7 @@ always @(*)
 		8'b11_000001 :
 			begin
 				word_count_nxt = 5'b00000;
-				write_data_array = 1'b0;
+				//write_data_array = 1'b0;
 				write_tag_array = 1'b0;
 				block_num = 3'b000;
 			end
@@ -77,21 +78,21 @@ always @(*)
 		8'b11_00001? :
 			begin
 				word_count_nxt = 5'b00010; //1 + 1 = 2
-				write_data_array = 1'b1;
+				//write_data_array = 1'b1;
 				memory_address = miss_address & 16'hFFF0 | 16'h0002;
 				block_num = 3'b000;
 			end
 		8'b11_00010? :
 			begin
 				word_count_nxt = 5'b00011; //2 + 1 = 3
-				write_data_array = 1'b1;
+				//write_data_array = 1'b1;
 				memory_address = miss_address & 16'hFFF0 | 16'h0004;
 				block_num = 3'b000;
 			end
 		8'b11_00011? :
 			begin
 				word_count_nxt = 5'b00100; //3 + 1 = 4
-				write_data_array = 1'b1;
+				//write_data_array = 1'b1;
 				memory_address = miss_address & 16'hFFF0 | 16'h0006;
 				block_num = 3'b000;
 			end

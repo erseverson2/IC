@@ -29,7 +29,7 @@ assign ALU_src1_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in
 assign ALU_src2_fwd[1] = RegWrite_EXMEM & ~MemRead_MEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg2_in_from_IDEX);
 
 // LLB and LHB forwarding (EX to EX)
-assign LB_ins_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg1_in_from_IDEX);
+assign LB_ins_fwd[1] = RegWrite_EXMEM & (|DstReg1_in_from_EXMEM) & (DstReg1_in_from_EXMEM == SrcReg2_in_from_IDEX);
 //assign jun_lin_stall = RegWrite_IDEX & (|DstReg1_in_from_IDEX) & LBIns_EX & ((DstReg1_in_from_IDEX == SrcReg2_in_to_IDEX) | (DstReg1_in_from_IDEX == SrcReg1_in_to_IDEX));
 assign jun_lin_stall = 1'b0;
 
