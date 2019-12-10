@@ -1,0 +1,87 @@
+# Read in Processor file
+
+read_file -format verilog { Shifter_reg.v RegisterFile.v pipeline_MEMWB.v \
+	pipeline_IFID.v pipeline_IDEX.v pipeline_EXMEM.v \
+	PC_control.v PC.v multicycle_memory.v MetaDataArray.v \
+	memory.v HazDetect.v forwarding_unit.v FlagRegister.v \
+	D-Flip-Flop.v Dec7to128.v DataArray.v cpu.v CLA.v \
+	cache_fill_FSM.v cache.v Bit16Reg.v Bit5Reg.v \
+	Bit4Reg.v Bit3Reg.v Bit2Reg.v ALU.v}
+
+# Set relevant design to top level
+set current_design cpu
+
+set_dont_touch [find design memory4c*]
+set_dont_touch [find design memory1c*]
+set_dont_touch [find design cache*]
+
+# Specify timing (change me)
+create_clock -name "clk" -period 5.0 {clk}
+
+# disable clock buffering
+set_dont_touch_network [find port clk]
+
+# Specify input delay for all inputs
+set prim_inputs [remove_from_collection [all_inputs]\
+                 [find port clk]]
+
+set_input_delay -clock clk 0.75 $prim_inputs
+
+# Specify output delays
+set_output_delay -clock clk 0.75 [all_outputs]
+
+# Specify output drive to 0.1pF
+set_load 0.1 [all_outputs]
+
+# Specify input drive to ND2D2BWP
+set_driving_cell -lib_cell ND2D2BWP -library\
+ tcbn40lpbwptc $prim_inputs
+
+# Set reset drive separately
+set_drive 0.1 RST_n
+
+# Mitigate hot electron effect (change)
+set_max_transition 0.50 [current_design]
+
+# Optimize area
+set_max_area 0
+
+# set clk uncertainty (change)
+set_clock_uncertainty 0.12 clk
+
+# Compensate for parasitic routing capacitance
+set_wire_load_model -name TSMC32K_Lowk_Conservative \
+                    -library tcbn40lpbwptc
+			
+# compile ultra
+compile_ultra
+		
+# Compile the design
+#compile -map_effort high -area_effort high
+
+# Report area
+report_area > cpu_unflatten.txt
+
+# Report_timing
+report_timing -delay min > timing_unflatten.txt
+
+# Write out the resulting netlist
+write -format verilog -output cpu_unflatten.vg
+
+# Flatten hierarchy
+ungroup -all -flatten
+
+# compile ultra
+compile_ultra
+
+# Compile the design
+#compile -map_effort high -area_effort high
+					
+# Report area
+report_area > cpu_flatten.txt
+
+# Report_timing
+report_timing -delay min > timing_flatten.txt
+
+# Write out the resulting netlist
+write -format verilog -output cpu_flatten.vg
