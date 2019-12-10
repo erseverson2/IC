@@ -8,6 +8,9 @@
 // Order of Flags: {Z, V, N}
 module cpu(clk, rst_n, hlt, pc_out);
 
+	//assign ISTALL = 1'b0;
+	//assign DSTALL = 1'b0;
+
 	input clk;
 
 	// Active low reset. A low on this signal resets the processor and causes
